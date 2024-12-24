@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ParkingSystem.Models
 {
@@ -7,7 +8,6 @@ namespace ParkingSystem.Models
         [Key]
         public int Id { get; set; }
 
-        [Required]
         public int UserId { get; set; }
 
         [Required]

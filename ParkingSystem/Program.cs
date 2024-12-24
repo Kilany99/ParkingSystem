@@ -22,7 +22,8 @@ builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddScoped<UserService>();
+builder.Services.AddScoped<IUserService,UserService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<EmailService>();
 builder.Services.AddDbContext<AppDbContext>();
 var mappingConfig = new MapperConfiguration(mc =>
@@ -76,6 +77,9 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("AllUsers", policy =>
         policy.RequireRole(Roles.Admin, Roles.User));
 });
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
 
 
 var app = builder.Build();

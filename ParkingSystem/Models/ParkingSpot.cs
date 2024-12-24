@@ -20,10 +20,13 @@ namespace ParkingSystem.Models
 
         public int Floor { get; set; }
 
-        [ForeignKey("Reservaion")]
-        public int? ReservaionId { get; set; }
+        public int? ReservationId { get; set; }
+
+
+        public int ParkingZoneId { get; set; }
 
         // Navigation property
+        public virtual ParkingZone ParkingZone { get; set; }  
         public virtual Reservation? CurrentReservation { get; set; }
         public virtual ICollection<Reservation> Reservations { get; set; } = new List<Reservation>();
 

@@ -9,7 +9,6 @@ namespace ParkingSystem.Models
         [Key]
         public int Id { get; set; }
 
-        [ForeignKey("Reservation")]
         public int ReservationId { get; set; }
 
         [Required]

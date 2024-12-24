@@ -9,15 +9,11 @@ namespace ParkingSystem.Models
         [Key]
         public int Id { get; set; }
 
-        [ForeignKey("User")]
         public int UserId { get; set; }
 
-        [ForeignKey("ParkingSpot")]
         public int ParkingSpotId { get; set; }
 
-        [ForeignKey("Car")]
         public int CarId { get; set; }
-
 
         [Required]
         public DateTime EntryTime { get; set; }

@@ -12,8 +12,6 @@ namespace ParkingSystem.Controllers
     public class ParkingController : ControllerBase
     {
 
-        private readonly ParkingService _parkingService;
-        private IMapper _mapper;
 
 
     }

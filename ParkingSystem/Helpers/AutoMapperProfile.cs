@@ -8,13 +8,7 @@ namespace ParkingSystem.Helpers
     {
         public AutoMapperProfile()
         {
-            CreateMap<User, UserViewModel>();
-            CreateMap<UserRegisterModel, User>();
-            CreateMap<UserUpdateModel, User>();
-
-            CreateMap<UpdateReservaion,Reservation>();
-
-            CreateMap<ParkingCreateModel, Parking>();
+          
         }
     }
 }

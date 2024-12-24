@@ -13,20 +13,18 @@ using static ParkingSystem.DTOs.UserDtos;
 
 
 [ApiController]
-[Authorize]
+//[Authorize]
 [Route("api/[controller]")]
 public class UserController : ControllerBase
 {
     private readonly UserService _userService;
-    private readonly AuthService _authService;
 
     private IMapper _mapper;
 
 
-    public UserController(UserService userService,AuthService authService, IMapper mapper)
+    public UserController(UserService userService, IMapper mapper)
     {
         _userService = userService;
-        _authService = authService;
         _mapper = mapper;
 
     }
