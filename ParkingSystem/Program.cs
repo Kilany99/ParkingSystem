@@ -40,7 +40,7 @@ using (var scope = host.Services.CreateScope())
 
     await DbInitializer.InitializeAsync(userManager, roleManager);
 }
-*/
+
 IMapper mapper = mappingConfig.CreateMapper();
 builder.Services.AddSingleton(mapper);
 
@@ -49,7 +49,7 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.LoginPath = "/User/Login";
     options.AccessDeniedPath = "/Account/AccessDenied";
 });
-
+*/
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
