@@ -13,7 +13,7 @@ using static ParkingSystem.DTOs.UserDtos;
 
 
 [ApiController]
-//[Authorize]
+[Authorize]
 [Route("api/[controller]")]
 public class UserController : ControllerBase
 {

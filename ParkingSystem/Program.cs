@@ -24,6 +24,11 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddScoped<IUserService,UserService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<ICarService, CarService>();
+builder.Services.AddScoped<IParkingZoneService, ParkingZoneService>();
+builder.Services.AddScoped<IReservationService, ReservationService>();
+builder.Services.AddScoped<IPaymentService, PaymentService>();
+builder.Services.AddScoped<IQRCodeService, QRCodeService>();
 builder.Services.AddScoped<EmailService>();
 builder.Services.AddDbContext<AppDbContext>();
 var mappingConfig = new MapperConfiguration(mc =>

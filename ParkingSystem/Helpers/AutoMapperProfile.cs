@@ -1,6 +1,11 @@
 ﻿using AutoMapper;
 using ParkingSystem.DTOs;
 using ParkingSystem.Models;
+using static ParkingSystem.DTOs.CarDtos;
+using static ParkingSystem.DTOs.ParkingZoneDtos;
+using static ParkingSystem.DTOs.PaymentDtos;
+using static ParkingSystem.DTOs.ReservationDtos;
+using static ParkingSystem.DTOs.UserDtos;
 
 namespace ParkingSystem.Helpers
 {
@@ -8,7 +13,22 @@ namespace ParkingSystem.Helpers
     {
         public AutoMapperProfile()
         {
-          
+            CreateMap<User, UserDto>();
+            CreateMap<UpdateUserDto, User>()
+                .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null));
+
+            CreateMap<Car, CarDto>();
+            CreateMap<CreateCarDto, Car>();
+
+            CreateMap<ParkingZone, ParkingZoneDto>();
+            CreateMap<ParkingSpot, ParkingSpotDto>();
+
+            CreateMap<Reservation, ReservationDto>()
+                .ForMember(dest => dest.Car, opt => opt.MapFrom(src => src.Car))
+                .ForMember(dest => dest.ParkingSpot, opt => opt.MapFrom(src => src.ParkingSpot));
+
+            CreateMap<Payment, PaymentDto>();
+
         }
     }
 }
