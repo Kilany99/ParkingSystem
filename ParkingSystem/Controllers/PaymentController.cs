@@ -9,7 +9,7 @@ namespace ParkingSystem.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize]
+  //  [Authorize]
     public class PaymentController : ControllerBase
     {
         private readonly IPaymentService _paymentService;

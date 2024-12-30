@@ -13,16 +13,21 @@ namespace ParkingSystem.Services
         Task<IEnumerable<ParkingZoneDto>> GetAllZonesAsync();
         Task<ParkingZoneStatusDto> GetZoneStatusAsync(int zoneId);
         Task<IEnumerable<ParkingSpotDto>> GetAvailableSpotsAsync(int zoneId);
+
+        Task<decimal> CalculateParkingFee(int zoneId, DateTime entryTime, DateTime exitTime);
+        Task<bool> IsZoneFull(int zoneId);
     }
     public class ParkingZoneService : IParkingZoneService
     {
         private readonly AppDbContext _context;
         private readonly IMapper _mapper;
+        private readonly ILogger<ParkingZoneService> _logger; 
 
-        public ParkingZoneService(AppDbContext context, IMapper mapper)
+        public ParkingZoneService(AppDbContext context, IMapper mapper, ILogger<ParkingZoneService> logger)
         {
             _context = context;
             _mapper = mapper;
+            _logger = logger;
         }
 
         public async Task<ParkingZoneDto> CreateZoneAsync(CreateParkingZoneDto dto)
@@ -32,7 +37,8 @@ namespace ParkingSystem.Services
                 Name = dto.Name,
                 TotalFloors = dto.TotalFloors,
                 SpotsPerFloor = dto.SpotsPerFloor,
-                Description = dto.Description
+                Description = dto.Description,
+                HourlyRate = dto.HourlyRate
             };
 
             _context.ParkingZones.Add(zone);
@@ -97,6 +103,55 @@ namespace ParkingSystem.Services
                 .ToListAsync();
 
             return _mapper.Map<IEnumerable<ParkingSpotDto>>(spots);
+        }
+
+     
+        public async Task<bool> IsZoneFull(int zoneId)
+        {
+            var zone = await _context.ParkingZones
+                .Include(z => z.ParkingSpots)
+                .FirstOrDefaultAsync(z => z.Id == zoneId);
+
+            if (zone == null)
+                throw new KeyNotFoundException($"Parking zone {zoneId} not found");
+
+            var availableSpots = zone.ParkingSpots.Count(s => s.Status == SpotStatus.Available);
+            var isFull = availableSpots == 0;
+
+            // Update IsFull status if it's changed
+            if (zone.IsFull != isFull)
+            {
+                zone.IsFull = isFull;
+                await _context.SaveChangesAsync();
+            }
+
+            return isFull;
+        }
+
+        public async Task<decimal> CalculateParkingFee(int zoneId, DateTime entryTime, DateTime exitTime)
+        {
+            var zone = await _context.ParkingZones
+                .FirstOrDefaultAsync(z => z.Id == zoneId);
+
+            if (zone == null)
+                throw new KeyNotFoundException($"Parking zone {zoneId} not found");
+
+            var duration = exitTime - entryTime;
+            var hours = Math.Ceiling(duration.TotalHours); // Round up to the nearest hour
+
+            var totalFee = (decimal)hours * zone.HourlyRate;
+
+            _logger.LogInformation(
+                "Calculated parking fee for zone {ZoneId}: {Hours} hours * {Rate} = {Total}",
+                zoneId, hours, zone.HourlyRate, totalFee);
+
+            return totalFee;
+        }
+
+        private decimal GetHourlyRate(ParkingZone zone, DateTime time)
+        {
+            // Standard rate
+            return zone.HourlyRate;
         }
     }
 

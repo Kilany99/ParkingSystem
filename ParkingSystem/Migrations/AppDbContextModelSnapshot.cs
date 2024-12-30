@@ -112,6 +112,9 @@ namespace ParkingSystem.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<decimal>("HourlyRate")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<bool>("IsFull")
                         .HasColumnType("bit");
 
@@ -180,7 +183,6 @@ namespace ParkingSystem.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("ExitTime")
-                        .IsRequired()
                         .HasColumnType("datetime2");
 
                     b.Property<int>("ParkingSpotId")

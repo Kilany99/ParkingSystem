@@ -18,7 +18,6 @@ namespace ParkingSystem.Models
         [Required]
         public DateTime EntryTime { get; set; }
 
-        [Required]
         public DateTime? ExitTime { get; set; }
 
         [Column(TypeName = "decimal(18,2)")]

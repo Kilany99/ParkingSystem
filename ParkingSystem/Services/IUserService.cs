@@ -1,8 +1,6 @@
 ﻿using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using ParkingSystem.Data;
-using ParkingSystem.Helpers;
-using ParkingSystem.Models;
 using static ParkingSystem.DTOs.UserDtos;
 
 namespace ParkingSystem.Services
@@ -27,48 +25,7 @@ namespace ParkingSystem.Services
             _mapper = mapper;
 
         }
-        /*
-                public async Task<User> Authenticate(string email, string password)
-                {
-                    if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password))
-                        return null;
-
-                    var user = await _context.Set<User>()
-                        .FirstOrDefaultAsync(u => u.Email == email);
-
-                    if (user == null) return null;
-
-                    if (PasswordHashHelper.VerifyPasswordHash(password, user.PasswordHash, user.PasswordSalt))
-                    {
-                        return user;
-                    }
-
-                    return null;
-                }
-                public User Create(User user, string password)
-                {
-                    // validation
-                    if (string.IsNullOrWhiteSpace(password))
-                        throw new AppException("Password is required");
-
-                    if (string.IsNullOrWhiteSpace(user.Email))
-                        throw new AppException("Email is required");
-
-                    if (_context.Users.Any(x => x.Email == user.Email))
-                        throw new AppException("Email \"" + user.Email + "\" is already taken!");
-
-                    byte[] passwordHash, passwordSalt;
-                    PasswordHashHelper.CreatePasswordHash(password, out passwordHash, out passwordSalt);
-
-                    user.PasswordHash = passwordHash;
-                    user.PasswordSalt = passwordSalt;
-
-                    _context.Users.Add(user);
-                    _context.SaveChanges();
-
-                    return user;
-                }
-        */
+        
         public async Task<IEnumerable<UserDto>> GetAllUsers()
         {
             var users = await _context.Users

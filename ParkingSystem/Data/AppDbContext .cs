@@ -22,7 +22,7 @@ namespace ParkingSystem.Data
         {
             if (!optionsBuilder.IsConfigured)
             {
-                optionsBuilder.UseSqlServer("Server=DESKTOP-P944USQ\\SQLEXPRESS01;Database=ParkingSystemDB;Trusted_Connection=True;TrustServerCertificate=True;");
+                optionsBuilder.UseSqlServer("Server=ASDGHALB\\SQLEXPRESS;Database=ParkingSystemDB;TrustServerCertificate=True;Integrated Security=True;");
             }
         }
 

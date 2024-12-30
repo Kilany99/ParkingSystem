@@ -13,24 +13,25 @@ using static ParkingSystem.DTOs.UserDtos;
 
 
 [ApiController]
-[Authorize]
+//[Authorize]
 [Route("api/[controller]")]
 public class UserController : ControllerBase
 {
-    private readonly UserService _userService;
-
-    private IMapper _mapper;
+    private readonly IUserService _userService;
 
 
-    public UserController(UserService userService, IMapper mapper)
+    private readonly ILogger<UserController> _logger;
+
+    public UserController(IUserService userService, ILogger<UserController> logger)
     {
         _userService = userService;
-        _mapper = mapper;
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
 
     }
 
-   
-    [Authorize(Policy = "AdminOnly")]
+
+   // [Authorize(Policy = "AdminOnly")]
     [HttpGet("getall")]
     public async Task<ActionResult<IEnumerable<UserDto>>> GetAll()
     {
@@ -38,7 +39,7 @@ public class UserController : ControllerBase
         return Ok(users);
     }
 
-    [Authorize(Policy = "AdminOnly")]
+   // [Authorize(Policy = "AdminOnly")]
     [HttpGet("{id}")]
     public async Task<ActionResult<UserDto>> GetById(int id)
     {
@@ -53,7 +54,7 @@ public class UserController : ControllerBase
         }
     }
 
-    [Authorize(Policy = "AdminOnly")]
+   // [Authorize(Policy = "AdminOnly")]
     [HttpPut("{id}")]
     public async Task<ActionResult<UserDto>> Update(int id, UpdateUserDto dto)
     {
@@ -75,9 +76,19 @@ public class UserController : ControllerBase
     [HttpGet("me")]
     public async Task<ActionResult<UserDto>> GetCurrentUser()
     {
-        var userId = User.GetUserId();
-        var user = await _userService.GetCurrentUser(userId);
-        return Ok(user);
+        try
+        {
+            var userId = User.GetUserId();
+            _logger.LogInformation("Getting details for user ID: {UserId}", userId);
+
+            var result = await _userService.GetUserById(userId);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting current user details");
+            return StatusCode(500, "An error occurred while processing your request");
+        }
     }
 
     [Authorize(Policy = "AdminOnly")]

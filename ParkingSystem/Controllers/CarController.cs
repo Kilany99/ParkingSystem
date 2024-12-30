@@ -8,7 +8,7 @@ namespace ParkingSystem.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize]
+   // [Authorize]
     public class CarController : ControllerBase
     {
         private readonly ICarService _carService;

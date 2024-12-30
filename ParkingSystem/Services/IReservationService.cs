@@ -20,12 +20,17 @@ namespace ParkingSystem.Services
         private readonly AppDbContext _context;
         private readonly IMapper _mapper;
         private readonly IQRCodeService _qrCodeService;
+        private readonly IParkingZoneService _parkingZoneService;
+        private readonly ILogger<ReservationService> _logger;
 
-        public ReservationService(AppDbContext context, IMapper mapper,IQRCodeService qrCodeService)
+        public ReservationService(AppDbContext context, IMapper mapper,IQRCodeService qrCodeService,
+            IParkingZoneService parkingZoneService, ILogger<ReservationService> logger)
         {
             _context = context;
             _mapper = mapper;
             _qrCodeService = qrCodeService;
+            _parkingZoneService = parkingZoneService;
+            _logger = logger;
         }
 
         public async Task<ReservationDto> CreateReservationAsync(int userId, CreateReservationDto dto)
@@ -52,6 +57,7 @@ namespace ParkingSystem.Services
                 ParkingSpotId = dto.ParkingSpotId,
                 EntryTime = DateTime.UtcNow,
                 Status = SessionStatus.Active
+
             };
             _context.Reservations.Add(reservation);
             await _context.SaveChangesAsync();
@@ -61,8 +67,7 @@ namespace ParkingSystem.Services
                      userId,
                      DateTime.UtcNow
                  );
-
-
+          
             // Update spot status
             spot.Status = SpotStatus.Occupied;
             spot.ReservationId = reservation.Id;
@@ -100,31 +105,58 @@ namespace ParkingSystem.Services
         public async Task<ReservationDto> EndParkingAsync(string qrCode)
         {
             var reservation = await _context.Reservations
-                .Include(r => r.Car)
-                .Include(r => r.ParkingSpot)
-                .FirstOrDefaultAsync(r => r.QRCode == qrCode);
+                       .Include(r => r.ParkingSpot)
+                           .ThenInclude(ps => ps.ParkingZone)
+                       .FirstOrDefaultAsync(r => r.QRCode == qrCode);
 
             if (reservation == null)
                 throw new KeyNotFoundException("Reservation not found");
 
-            reservation.ExitTime = DateTime.UtcNow;
-            reservation.TotalAmount = await CalculateParkingFeeAsync(reservation.Id);
-            reservation.Status = SessionStatus.Completed;
+            if (reservation.ParkingSpot == null)
+                throw new InvalidOperationException("Parking spot not found for this reservation");
 
-            // Free up the parking spot
-            var spot = reservation.ParkingSpot;
-            spot.Status = SpotStatus.Available;
-            spot.ReservationId = null;
+            if (reservation.ParkingSpot.ParkingZone == null)
+                throw new InvalidOperationException("Parking zone not found for this spot");
 
-            await _context.SaveChangesAsync();
+            if (reservation.ExitTime == null)
+            {
+                reservation.ExitTime = DateTime.UtcNow;
+            }
 
-            return _mapper.Map<ReservationDto>(reservation);
+            try
+            {
+                // Calculate fee
+                reservation.TotalAmount = await _parkingZoneService.CalculateParkingFee(
+                    reservation.ParkingSpot.ParkingZone.Id,
+                    reservation.EntryTime,
+                    reservation.ExitTime.Value
+                );
+
+                _logger.LogInformation(
+                    "Calculated parking fee for reservation {ReservationId}: {Amount}",
+                    reservation.Id,
+                    reservation.TotalAmount);
+
+                reservation.Status = SessionStatus.Completed;
+
+                // Update parking spot status
+                reservation.ParkingSpot.Status = SpotStatus.Available;
+                reservation.ParkingSpot.ReservationId = null;
+
+                await _context.SaveChangesAsync();
+
+                return _mapper.Map<ReservationDto>(reservation);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Error calculating parking fee for reservation {ReservationId}",
+                    reservation.Id);
+                throw;
+            }
         }
 
-        private string GenerateQRCode()
-        {
-            return Guid.NewGuid().ToString("N");
-        }
+        
 
         private async Task<ReservationDto> GetReservationDtoAsync(int reservationId)
         {
@@ -139,17 +171,19 @@ namespace ParkingSystem.Services
         public async Task<decimal> CalculateParkingFeeAsync(int reservationId)
         {
             var reservation = await _context.Reservations
+                .Include(r => r.ParkingSpot)
+                .ThenInclude(ps => ps.ParkingZone)
                 .FirstOrDefaultAsync(r => r.Id == reservationId);
 
             if (reservation == null)
                 throw new KeyNotFoundException("Reservation not found");
 
             var exitTime = reservation.ExitTime ?? DateTime.UtcNow;
-            var duration = exitTime - reservation.EntryTime;
 
-            // Example pricing: $2 per hour, minimum 1 hour
-            var hours = Math.Ceiling(duration.TotalHours);
-            return (decimal)hours * 2.0m;
+            return await _parkingZoneService.CalculateParkingFee(
+                reservation.ParkingSpot.ParkingZone.Id,
+                reservation.EntryTime,
+                exitTime);
         }
 
         public async Task<IEnumerable<ReservationDto>> GetUserReservationsAsync(int userId)
@@ -163,5 +197,7 @@ namespace ParkingSystem.Services
 
             return _mapper.Map<IEnumerable<ReservationDto>>(reservations);
         }
+
+        
     }
 }

@@ -54,7 +54,7 @@ namespace ParkingSystem.Services
                 PasswordHash = HashPassword(model.Password),
                 Name = model.Name,
                 Phone = model.Phone,
-                Role = "User" // Default role
+                Role = "Admin" // Default role
             };
 
             _context.Users.Add(user);
