@@ -16,7 +16,9 @@ namespace ParkingSystem.Models
         public int CarId { get; set; }
 
         [Required]
-        public DateTime EntryTime { get; set; }
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        public DateTime? EntryTime { get; set; }
 
         public DateTime? ExitTime { get; set; }
 
@@ -27,7 +29,7 @@ namespace ParkingSystem.Models
         public string QRCode { get; set; } = string.Empty;
 
         [Required]
-        public SessionStatus Status { get; set; } = SessionStatus.Active;
+        public SessionStatus Status { get; set; } = SessionStatus.Reserved;
 
 
         public virtual User User { get; set; }

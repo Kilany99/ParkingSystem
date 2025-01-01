@@ -12,7 +12,7 @@ using ParkingSystem.Data;
 namespace ParkingSystem.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20241230103759_initMig")]
+    [Migration("20241231150602_initMig")]
     partial class initMig
     {
         /// <inheritdoc />
@@ -182,7 +182,10 @@ namespace ParkingSystem.Migrations
                     b.Property<int>("CarId")
                         .HasColumnType("int");
 
-                    b.Property<DateTime>("EntryTime")
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("EntryTime")
                         .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("ExitTime")

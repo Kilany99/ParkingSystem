@@ -12,8 +12,12 @@ namespace ParkingSystem.Services
         Task<ReservationDto> CreateReservationAsync(int userId, CreateReservationDto dto);
         Task<ReservationDto> StartParkingAsync(string qrCode);
         Task<ReservationDto> EndParkingAsync(string qrCode);
+        Task<ReservationDto> CancelReservationAsync(int reservationId, int userId);
+
         Task<IEnumerable<ReservationDto>> GetUserReservationsAsync(int userId);
         Task<decimal> CalculateParkingFeeAsync(int reservationId);
+        public Task<ReservationDto> GetActiveReservation(int carId);
+        Task<bool> HasActiveReservation(int carId);
     }
     public class ReservationService : IReservationService
     {
@@ -35,6 +39,16 @@ namespace ParkingSystem.Services
 
         public async Task<ReservationDto> CreateReservationAsync(int userId, CreateReservationDto dto)
         {
+            // Check if car has active reservations
+            var hasActiveReservation = await _context.Reservations
+            .AnyAsync(r => r.CarId == dto.CarId
+                       && r.Status == SessionStatus.Active);
+
+            if (hasActiveReservation)
+            {
+                throw new InvalidOperationException(
+                    "This car already has an active parking reservation");
+            }
             // Verify car belongs to user
             var car = await _context.Cars
                 .FirstOrDefaultAsync(c => c.Id == dto.CarId && c.UserId == userId);
@@ -55,8 +69,8 @@ namespace ParkingSystem.Services
                 UserId = userId,
                 CarId = dto.CarId,
                 ParkingSpotId = dto.ParkingSpotId,
-                EntryTime = DateTime.UtcNow,
-                Status = SessionStatus.Active
+                CreatedAt = DateTime.UtcNow,
+                Status = SessionStatus.Reserved,  // Initial status is Reserved
 
             };
             _context.Reservations.Add(reservation);
@@ -69,7 +83,7 @@ namespace ParkingSystem.Services
                  );
           
             // Update spot status
-            spot.Status = SpotStatus.Occupied;
+            spot.Status = SpotStatus.Reserved;
             spot.ReservationId = reservation.Id;
 
             await _context.SaveChangesAsync();
@@ -92,11 +106,16 @@ namespace ParkingSystem.Services
             if (reservation == null)
                 throw new KeyNotFoundException("Reservation not found");
 
+            if (reservation.Status != SessionStatus.Reserved)
+                throw new InvalidOperationException("Reservation is not in a valid state to start parking");
 
-            if (reservation.Status != SessionStatus.Active)
-                throw new InvalidOperationException("Reservation is not active");
+            if (reservation.EntryTime.HasValue)
+                throw new InvalidOperationException("Parking has already started for this reservation");
+
 
             reservation.EntryTime = DateTime.UtcNow;
+            reservation.Status = SessionStatus.Active;
+            reservation.ParkingSpot.Status = SpotStatus.Occupied;
             await _context.SaveChangesAsync();
 
             return _mapper.Map<ReservationDto>(reservation);
@@ -126,9 +145,12 @@ namespace ParkingSystem.Services
             try
             {
                 // Calculate fee
+                if(reservation.Status != SessionStatus.Active)
+                    throw new InvalidOperationException("Reservation is not in a valid state to end parking");
+                
                 reservation.TotalAmount = await _parkingZoneService.CalculateParkingFee(
                     reservation.ParkingSpot.ParkingZone.Id,
-                    reservation.EntryTime,
+                    reservation.EntryTime.Value,
                     reservation.ExitTime.Value
                 );
 
@@ -155,8 +177,56 @@ namespace ParkingSystem.Services
                 throw;
             }
         }
+        public async Task<ReservationDto> CancelReservationAsync(int reservationId, int userId)
+        {
+            var reservation = await _context.Reservations
+                .Include(r => r.ParkingSpot)
+                    .ThenInclude(ps => ps.ParkingZone)
+                .Include(r => r.Car)
+                .FirstOrDefaultAsync(r => r.Id == reservationId && r.UserId == userId);
 
-        
+            if (reservation == null)
+                throw new KeyNotFoundException("Reservation not found");
+
+            // Check if reservation can be cancelled
+            if (reservation.Status != SessionStatus.Reserved)
+                throw new InvalidOperationException("Only reserved status reservations can be cancelled");
+
+            try
+            {
+                // Calculate any applicable cancellation fee
+                var cancellationFee = CalculateCancellationFee(reservation);
+
+                // Update reservation status
+                reservation.Status = SessionStatus.Cancelled;
+                reservation.TotalAmount = cancellationFee;
+
+                // Free up the parking spot
+                if (reservation.ParkingSpot != null)
+                {
+                    reservation.ParkingSpot.Status = SpotStatus.Available;
+                    reservation.ParkingSpot.ReservationId = null;
+                }
+
+                await _context.SaveChangesAsync();
+
+                _logger.LogInformation(
+                    "Reservation {ReservationId} cancelled. Cancellation fee: {Fee}",
+                    reservationId,
+                    cancellationFee);
+
+                return _mapper.Map<ReservationDto>(reservation);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Error cancelling reservation {ReservationId}",
+                    reservationId);
+                throw;
+            }
+        }
+
+
 
         private async Task<ReservationDto> GetReservationDtoAsync(int reservationId)
         {
@@ -168,21 +238,38 @@ namespace ParkingSystem.Services
             return _mapper.Map<ReservationDto>(reservation);
         }
 
+
+        private decimal CalculateCancellationFee(Reservation reservation)
+        {
+            // - If cancelled within 15 minutes of creation: no fee
+            // - If cancelled after 15 minutes: 1 hour parking fee
+
+            var timeSinceCreation = DateTime.UtcNow - reservation.CreatedAt;
+            if (timeSinceCreation.TotalMinutes <= 15)
+                return 0;
+
+            // Charge one hour of parking
+            return reservation.ParkingSpot.ParkingZone.HourlyRate;
+        }
         public async Task<decimal> CalculateParkingFeeAsync(int reservationId)
         {
             var reservation = await _context.Reservations
                 .Include(r => r.ParkingSpot)
                 .ThenInclude(ps => ps.ParkingZone)
                 .FirstOrDefaultAsync(r => r.Id == reservationId);
-
+        
             if (reservation == null)
                 throw new KeyNotFoundException("Reservation not found");
+
+            if (reservation.Status != SessionStatus.Active)
+                throw new InvalidOperationException("Reservation is not in a valid state to calculate fee");
+
 
             var exitTime = reservation.ExitTime ?? DateTime.UtcNow;
 
             return await _parkingZoneService.CalculateParkingFee(
                 reservation.ParkingSpot.ParkingZone.Id,
-                reservation.EntryTime,
+                reservation.EntryTime.Value,
                 exitTime);
         }
 
@@ -198,6 +285,33 @@ namespace ParkingSystem.Services
             return _mapper.Map<IEnumerable<ReservationDto>>(reservations);
         }
 
-        
+        public async Task<ReservationDto> GetActiveReservation(int carId)
+        {
+            var reservation = await _context.Reservations
+                .Include(r => r.ParkingSpot)
+                    .ThenInclude(ps => ps.ParkingZone)
+                .Include(r => r.Car)
+                .FirstOrDefaultAsync(r => r.CarId == carId
+                                     && r.Status == SessionStatus.Active);
+
+            if (reservation == null)
+                throw new KeyNotFoundException("No active reservation found for this car");
+
+            return _mapper.Map<ReservationDto>(reservation);
+        }
+
+        public async Task<bool> HasActiveReservation(int carId)
+        {
+            var hasActive = await _context.Reservations
+                .AnyAsync(r => r.CarId == carId && (r.Status == SessionStatus.Active||r.Status == SessionStatus.Reserved));
+
+            if (hasActive)
+            {
+                _logger.LogInformation("Car {CarId} has an active reservation", carId);
+            }
+
+            return hasActive;
+        }
+
     }
 }

@@ -9,7 +9,8 @@ namespace ParkingSystem.DTOs
         public record CreateReservationDto(int CarId, int ParkingSpotId);
         public record ReservationDto(
             int Id,
-            DateTime EntryTime,
+            DateTime CreatedAt,
+            DateTime? EntryTime,
             DateTime? ExitTime,
             decimal? TotalAmount,
             string QRCode,

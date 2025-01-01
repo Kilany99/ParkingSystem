@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using ParkingSystem.Attributes;
 using ParkingSystem.Services;
 using static ParkingSystem.DTOs.AuthDtos;
 
@@ -13,6 +14,7 @@ namespace ParkingSystem.Controllers
             _authService = authService;
         }
         [HttpPost("register")]
+        [CustomRateLimit("1h", 3)]  // 3 registrations per hour
         public async Task<ActionResult<AuthResponseDto>> Register(RegisterDto model)
         {
             try
@@ -27,6 +29,7 @@ namespace ParkingSystem.Controllers
         }
 
         [HttpPost("login")]
+        [CustomRateLimit("5m", 5)]  // 5 attempts per 5 minutes
         public async Task<ActionResult<AuthResponseDto>> Login(LoginDto model)
         {
             try
