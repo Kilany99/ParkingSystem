@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using ParkingSystem.Attributes;
 using ParkingSystem.Helpers;
 using ParkingSystem.Services;
 using static ParkingSystem.DTOs.ReservationDtos;
@@ -20,7 +21,7 @@ namespace ParkingSystem.Controllers
             _reservationService = reservationService;
             _logger= logger;
         }
-
+        [CustomRateLimit("1m", 10)]
         [HttpPost]
         public async Task<ActionResult<ReservationDto>> CreateReservation(CreateReservationDto dto)
         {

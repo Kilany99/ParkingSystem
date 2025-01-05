@@ -6,7 +6,7 @@ namespace ParkingSystem.Models
     public class User
     {
         [Key]
-    public int Id { get; set; }  // Simpler name, EF Core will handle identity
+    public int Id { get; set; }  
 
     [Required]
     [EmailAddress]

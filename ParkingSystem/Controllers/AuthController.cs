@@ -5,6 +5,8 @@ using static ParkingSystem.DTOs.AuthDtos;
 
 namespace ParkingSystem.Controllers
 {
+    [ApiController]
+    [Route("api/[controller]")]
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
@@ -32,13 +34,18 @@ namespace ParkingSystem.Controllers
         [CustomRateLimit("5m", 5)]  // 5 attempts per 5 minutes
         public async Task<ActionResult<AuthResponseDto>> Login(LoginDto model)
         {
+            Console.WriteLine("I am here 1");
+
             try
             {
                 var result = await _authService.LoginAsync(model);
+                Console.WriteLine("I am here 2");
                 return Ok(result);
             }
             catch (UnauthorizedAccessException)
             {
+                Console.WriteLine("I am here 3");
+
                 return Unauthorized("Invalid email or password");
             }
         }
