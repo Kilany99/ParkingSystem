@@ -33,7 +33,7 @@ namespace ParkingSystem.Controllers
             return Ok(payment);
         }
 
-        [HttpGet]
+        [HttpGet("my-payments")]
         public async Task<ActionResult<IEnumerable<PaymentDto>>> GetMyPayments()
         {
             var userId = User.GetUserId();
