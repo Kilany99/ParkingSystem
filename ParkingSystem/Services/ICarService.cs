@@ -86,6 +86,14 @@ namespace ParkingSystem.Services
             if (car == null)
                 return false;
 
+            // Delete related Reservations (ParkingSessions)
+            var reservations = await _context.Reservations
+                .Where(r => r.CarId == carId)
+                .ToListAsync();
+
+            // Remove all related reservations
+            _context.Reservations.RemoveRange(reservations);
+
             _context.Cars.Remove(car);
             await _context.SaveChangesAsync();
 
