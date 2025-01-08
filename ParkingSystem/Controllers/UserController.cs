@@ -31,7 +31,25 @@ public class UserController : ControllerBase
     }
 
 
-   // [Authorize(Policy = "AdminOnly")]
+
+    [HttpPost("create")]
+    // [Authorize(Policy ="AdminOnly")]
+    public async Task<ActionResult<UserDto>> CreateUser(CreateUserDto dto)
+    {
+        try
+        {
+            var user = await _userService.CreateUserAsync(dto);
+            return CreatedAtAction(nameof(GetById), new { id = user.Id }, user);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating user");
+            return StatusCode(500, "An error occurred while processing your request");
+        }
+    }
+
+
+    // [Authorize(Policy = "AdminOnly")]
     [HttpGet("getall")]
     public async Task<ActionResult<IEnumerable<UserDto>>> GetAll()
     {
@@ -91,7 +109,7 @@ public class UserController : ControllerBase
         }
     }
 
-    [Authorize(Policy = "AdminOnly")]
+   // [Authorize(Policy = "AdminOnly")]
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(int id)
     {

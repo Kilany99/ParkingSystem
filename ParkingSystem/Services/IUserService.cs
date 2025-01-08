@@ -1,12 +1,15 @@
 ﻿using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using ParkingSystem.Data;
+using ParkingSystem.Models;
 using static ParkingSystem.DTOs.UserDtos;
 
 namespace ParkingSystem.Services
 {
     public interface IUserService
     {
+        Task<UserDto> CreateUserAsync(CreateUserDto dto);
+
         Task<IEnumerable<UserDto>> GetAllUsers();
         Task<UserDto> GetUserById(int id);
         Task<UserDto> UpdateUser(int id, UpdateUserDto dto);
@@ -25,7 +28,15 @@ namespace ParkingSystem.Services
             _mapper = mapper;
 
         }
-        
+
+        public async Task<UserDto> CreateUserAsync(CreateUserDto dto)
+        {
+            var user = _mapper.Map<User>(dto);
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
+            return _mapper.Map<UserDto>(user);
+        }
+
         public async Task<IEnumerable<UserDto>> GetAllUsers()
         {
             var users = await _context.Users

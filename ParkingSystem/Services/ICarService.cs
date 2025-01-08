@@ -91,6 +91,8 @@ namespace ParkingSystem.Services
                 .Where(r => r.CarId == carId)
                 .ToListAsync();
 
+
+
             // Remove all related reservations
             _context.Reservations.RemoveRange(reservations);
 

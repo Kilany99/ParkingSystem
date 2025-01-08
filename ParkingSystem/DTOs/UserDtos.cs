@@ -13,5 +13,15 @@
         public record UpdateUserDto(
             string Name,
             string Phone);
+
+        public record CreateUserDto(
+        
+            string Email,
+            string Name,
+            string Phone,
+            string Role,
+            string Password 
+        );
     }
+
 }
