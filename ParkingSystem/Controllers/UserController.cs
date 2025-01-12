@@ -13,7 +13,7 @@ using static ParkingSystem.DTOs.UserDtos;
 
     
 [ApiController]
-//[Authorize]
+[Authorize]
 [Route("api/[controller]")]
 public class UserController : ControllerBase
 {
@@ -33,7 +33,7 @@ public class UserController : ControllerBase
 
 
     [HttpPost("create")]
-    // [Authorize(Policy ="AdminOnly")]
+     [Authorize(Policy ="AdminOnly")]
     public async Task<ActionResult<UserDto>> CreateUser(CreateUserDto dto)
     {
         try
@@ -49,7 +49,7 @@ public class UserController : ControllerBase
     }
 
 
-    // [Authorize(Policy = "AdminOnly")]
+    [Authorize(Policy = "AdminOnly")]
     [HttpGet("getall")]
     public async Task<ActionResult<IEnumerable<UserDto>>> GetAll()
     {
@@ -72,7 +72,6 @@ public class UserController : ControllerBase
         }
     }
 
-   // [Authorize(Policy = "AdminOnly")]
     [HttpPut("{id}")]
     public async Task<ActionResult<UserDto>> Update(int id, UpdateUserDto dto)
     {

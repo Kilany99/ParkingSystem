@@ -105,7 +105,7 @@ namespace ParkingSystem.Controllers
                 return StatusCode(500, "An error occurred while cancelling the reservation");
             }
         }
-        [HttpGet("car/{carId}/active")]
+    /*    [HttpGet("car/{carId}/active")]
         public async Task<ActionResult<ReservationDto>> GetActiveReservation(int carId)
         {
             try
@@ -118,5 +118,6 @@ namespace ParkingSystem.Controllers
                 return NotFound("No active reservation found for this car");
             }
         }
+    */
     }
 }

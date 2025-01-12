@@ -33,5 +33,23 @@ namespace ParkingSystem.Services
 
             await smtpClient.SendMailAsync(mailMessage);
         }
+
+        public async Task SendPasswordResetEmail(string email, string resetToken)
+        {
+            var resetLink = $"{_configuration["AppSettings:ClientUrl"]}/reset-password?token={resetToken}";
+
+            // Use your preferred email sending service (SMTP, SendGrid, etc.)
+            var smtpClient = new SmtpClient("smtp.mailtrap.io");
+            var message = new MailMessage
+            {
+                From = new MailAddress("no-reply@example.com"),
+                Subject = "Password Reset",
+                Body = $"Click here to reset your password: {resetLink}",
+                IsBodyHtml = true,
+            };
+            message.To.Add(email);
+
+            await smtpClient.SendMailAsync(message);
+        }
     }
 }

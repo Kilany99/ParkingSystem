@@ -31,8 +31,12 @@ namespace ParkingSystem.Models
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-    // Navigation properties
-    public virtual ICollection<Reservation> Reservations { get; set; } = new List<Reservation>();
+    public string? ResetPasswordToken { get; set; } // Token for resetting the password
+    public DateTime? ResetPasswordTokenExpiration { get; set; } // Expiration time for the token
+
+
+        // Navigation properties
+        public virtual ICollection<Reservation> Reservations { get; set; } = new List<Reservation>();
     
     public virtual ICollection<Car> Cars { get; set; } = new List<Car>();
 

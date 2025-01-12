@@ -1,7 +1,9 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using ParkingSystem.Data;
 using ParkingSystem.Models;
+using System;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -13,18 +15,24 @@ namespace ParkingSystem.Services
     {
         Task<AuthResponseDto> LoginAsync(LoginDto model);
         Task<AuthResponseDto> RegisterAsync(RegisterDto model);
+        Task<ActionResult> ForgotPasswordAsync(ForgotPasswordDto model);
+        Task<ActionResult> ResetPasswordAsync(ResetPasswordDto model);
     }
     public class AuthService : IAuthService
     {
         private readonly AppDbContext _context;
+        private readonly EmailService _emailService;
         private readonly IConfiguration _configuration;
 
         public AuthService(
             AppDbContext context,
-            IConfiguration configuration)
+            IConfiguration configuration, AppDbContext appDbContext,
+            EmailService emailService)
         {
             _context = context;
             _configuration = configuration;
+            _context = appDbContext;
+            _emailService = emailService;
         }
 
         public async Task<AuthResponseDto> LoginAsync(LoginDto model)
@@ -67,12 +75,12 @@ namespace ParkingSystem.Services
         private string GenerateJwtToken(User user)
         {
             var claims = new List<Claim>
-        {
-            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new Claim(ClaimTypes.Email, user.Email),
-            new Claim(ClaimTypes.Name, user.Name),
-            new Claim(ClaimTypes.Role, user.Role)
-        };
+            {
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new Claim(ClaimTypes.Email, user.Email),
+                new Claim(ClaimTypes.Name, user.Name),
+                new Claim(ClaimTypes.Role, user.Role)
+            };
 
             var key = new SymmetricSecurityKey(
                 Encoding.UTF8.GetBytes(_configuration["JwtSettings:Secret"]!));
@@ -89,6 +97,50 @@ namespace ParkingSystem.Services
             );
 
             return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+        public async Task<ActionResult> ForgotPasswordAsync(ForgotPasswordDto model)
+        {
+            var user = await _context.Users
+                .FirstOrDefaultAsync(u => u.Email == model.Email);
+
+            if (user == null)
+            {
+                return new BadRequestObjectResult("Email not found.");
+            }
+
+            // Generate reset token
+            var resetToken = Guid.NewGuid().ToString();
+            user.ResetPasswordToken = resetToken;
+            user.ResetPasswordTokenExpiration = DateTime.UtcNow.AddHours(1); // Token valid for 1 hour
+
+            _context.Users.Update(user);
+            await _context.SaveChangesAsync();
+
+            // Send the token to the user's email (you need to configure an email service)
+            await _emailService.SendPasswordResetEmail(user.Email, resetToken);
+
+            return new OkObjectResult("Password reset link has been sent to your email.");
+        }
+
+        public async Task<ActionResult> ResetPasswordAsync(ResetPasswordDto model)
+        {
+            var user = await _context.Users
+                .FirstOrDefaultAsync(u => u.ResetPasswordToken == model.Token);
+
+            if (user == null || user.ResetPasswordTokenExpiration < DateTime.UtcNow)
+            {
+                return new BadRequestObjectResult("Invalid or expired token.");
+            }
+
+            // Hash the new password
+            user.PasswordHash = HashPassword(model.NewPassword);
+            user.ResetPasswordToken = null; // Clear the token after successful reset
+            user.ResetPasswordTokenExpiration = null; // Clear the expiration
+
+            _context.Users.Update(user);
+            await _context.SaveChangesAsync();
+
+            return new OkObjectResult("Password has been reset successfully.");
         }
 
         private string HashPassword(string password)

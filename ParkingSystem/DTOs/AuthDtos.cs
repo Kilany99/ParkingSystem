@@ -15,5 +15,18 @@
             string Email,
             string Name,
             string Rol);    
+
+        public record ForgotPasswordDto
+            (
+            string Email
+        );
+
+        public record ResetPasswordDto
+            (
+            string NewPassword,
+            string Token
+        );
     }
+
+
 }
