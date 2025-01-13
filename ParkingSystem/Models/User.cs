@@ -36,7 +36,7 @@ namespace ParkingSystem.Models
 
 
         // Navigation properties
-        public virtual ICollection<Reservation> Reservations { get; set; } = new List<Reservation>();
+    public virtual ICollection<Reservation> Reservations { get; set; } = new List<Reservation>();
     
     public virtual ICollection<Car> Cars { get; set; } = new List<Car>();
 

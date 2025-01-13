@@ -54,7 +54,7 @@ namespace ParkingSystem.Controllers
         }
         [HttpPost("forgot-password")]
         [CustomRateLimit("1h", 1)]  // 1 attempt per 1 hour
-        public async Task<ActionResult> ForgotPassword([FromBody] ForgotPasswordDto model)
+        public async Task<ActionResult> ForgotPassword(ForgotPasswordDto model)
         {
             try
             {
@@ -69,7 +69,7 @@ namespace ParkingSystem.Controllers
 
         [HttpPost("reset-password")]
         [CustomRateLimit("1h", 1)]  // 1 attempt per 1 hour
-        public async Task<ActionResult> ResetPassword([FromBody] ResetPasswordDto model)
+        public async Task<ActionResult> ResetPassword(ResetPasswordDto model)
         {
             try
             {

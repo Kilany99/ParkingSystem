@@ -116,7 +116,7 @@ namespace ParkingSystem.Services
             _context.Users.Update(user);
             await _context.SaveChangesAsync();
 
-            // Send the token to the user's email (you need to configure an email service)
+            // Send the token to the user's email 
             await _emailService.SendPasswordResetEmail(user.Email, resetToken);
 
             return new OkObjectResult("Password reset link has been sent to your email.");
