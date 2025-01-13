@@ -39,7 +39,7 @@ A Kotlin-based **Android mobile app** offers all the features of the web applica
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/parking-management-system.git
+   git clone https://github.com/kilany99/parkingSystem.git
    ```
 
 2. Navigate to the **API project directory**:
@@ -59,7 +59,7 @@ A Kotlin-based **Android mobile app** offers all the features of the web applica
 
 1. Navigate to the **Frontend project directory**:
    ```bash
-   cd parking-management-frontend
+   cd parking-system
    ```
 
 2. Install the dependencies:
