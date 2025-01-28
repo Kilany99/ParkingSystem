@@ -7,7 +7,7 @@ namespace ParkingSystem.Services
     {
         string GenerateQRCode(int reservationId, int userId, DateTime timestamp);
         bool ValidateQRCode(string qrCode);
-        (int reservationId, int userId) DecodeQRCode(string qrCode);
+        (int reservationId, int userId, DateTime timestamp) DecodeQRCode(string qrCode);
     }
 
     public class QRCodeService : IQRCodeService
@@ -76,7 +76,7 @@ namespace ParkingSystem.Services
             }
         }
 
-        public (int reservationId, int userId) DecodeQRCode(string qrCode)
+        public (int reservationId, int userId, DateTime timestamp) DecodeQRCode(string qrCode)
         {
             if (!ValidateQRCode(qrCode))
                 throw new InvalidOperationException("Invalid QR code");
@@ -92,7 +92,10 @@ namespace ParkingSystem.Services
             var decodedString = Encoding.UTF8.GetString(decodedBytes);
 
             var parts = decodedString.Split(':');
-            return (int.Parse(parts[0]), int.Parse(parts[1]));
+            return (int.Parse(parts[0]),    //resId
+                    int.Parse(parts[1]),    //UserId
+                    new DateTime(long.Parse(parts[2])) //timeStamp to be used for qr expriry validation
+                    );
         }
     }
 

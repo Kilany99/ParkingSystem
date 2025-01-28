@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using ParkingSystem.Data;
 using ParkingSystem.Models;
+using System.Text.RegularExpressions;
 using static ParkingSystem.DTOs.CarDtos;
 
 namespace ParkingSystem.Services
@@ -19,7 +20,7 @@ namespace ParkingSystem.Services
     {
         private readonly AppDbContext _context;
         private readonly IMapper _mapper;
-
+        private readonly Regex _plateRegex = new(@"^[A-Z]{3}\d{4}$", RegexOptions.Compiled);
         public CarService(AppDbContext context, IMapper mapper)
         {
             _context = context;
@@ -32,6 +33,9 @@ namespace ParkingSystem.Services
             {
                 throw new InvalidOperationException("Car with this plate number already exists");
             }
+            // Validate plate number format first
+            if (!_plateRegex.IsMatch(dto.PlateNumber))
+                throw new InvalidOperationException("Invalid license plate format");
 
             var car = new Car
             {

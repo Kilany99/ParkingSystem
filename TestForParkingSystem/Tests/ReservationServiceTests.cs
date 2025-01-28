@@ -134,7 +134,7 @@ namespace TestForParkingSystem.Tests
             await _context.SaveChangesAsync();
 
             // Act
-            var result = await _service.StartParkingAsync("test-qr");
+            var result = await _service.StartParkingAsync(new ParkingSystem.DTOs.ParkingRequest());
 
             // Assert
             Assert.NotNull(result);

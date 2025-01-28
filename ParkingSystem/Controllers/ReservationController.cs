@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using ParkingSystem.Attributes;
+using ParkingSystem.DTOs;
 using ParkingSystem.Helpers;
 using ParkingSystem.Services;
 using static ParkingSystem.DTOs.ReservationDtos;
@@ -10,7 +11,7 @@ namespace ParkingSystem.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-   // [Authorize]
+    [Authorize]
     public class ReservationController : ControllerBase
     {
         private readonly IReservationService _reservationService;
@@ -54,18 +55,44 @@ namespace ParkingSystem.Controllers
             }
         }
 
-        [HttpPost("start")]
-        public async Task<ActionResult<ReservationDto>> StartParking([FromBody] string qrCode)
+        [HttpPost("start")]  //Called from parking zone with QR code reader and plate number reader on the entrence of the parking.
+        public async Task<ActionResult<ReservationDto>> StartParking([FromBody] ParkingRequest request)
         {
-            var result = await _reservationService.StartParkingAsync(qrCode);
-            return Ok(result);
+            try
+            {
+                var result = await _reservationService.StartParkingAsync(request);
+                return Ok(result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating reservation");
+                return StatusCode(500, "An error occurred while start parking reservation "+ ex);
+
+            }
         }
 
-        [HttpPost("end")]
-        public async Task<ActionResult<ReservationDto>> EndParking([FromBody] string qrCode)
+        [HttpPost("end")] //Called from parking zone with QR code reader and plate number reader on the exit of the parking.
+        public async Task<ActionResult<ReservationDto>> EndParking([FromBody] ParkingRequest request)
         {
-            var result = await _reservationService.EndParkingAsync(qrCode);
-            return Ok(result);
+            try
+            {
+                var result = await _reservationService.EndParkingAsync(request);
+                return Ok(result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating reservation");
+                return StatusCode(500, "An error occurred while start parking reservation " + ex);
+
+            }
         }
 
         [HttpGet("me")]

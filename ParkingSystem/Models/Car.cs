@@ -11,7 +11,7 @@ namespace ParkingSystem.Models
         public int UserId { get; set; }
 
         [Required]
-        [StringLength(20)]
+        [RegularExpression(@"^[A-Z]{3}\d{4}$", ErrorMessage = "Invalid plate format")]   //validation that plateNumber is in the correct form "XXX1234"
         public string PlateNumber { get; set; } = string.Empty;
 
         [Required]

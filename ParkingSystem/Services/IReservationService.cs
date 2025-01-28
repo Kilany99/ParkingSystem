@@ -1,8 +1,10 @@
 ﻿using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using ParkingSystem.Data;
+using ParkingSystem.DTOs;
 using ParkingSystem.Enums;
 using ParkingSystem.Models;
+using System.Text.RegularExpressions;
 using static ParkingSystem.DTOs.ReservationDtos;
 
 namespace ParkingSystem.Services
@@ -10,8 +12,8 @@ namespace ParkingSystem.Services
     public interface IReservationService
     {
         Task<ReservationDto> CreateReservationAsync(int userId, CreateReservationDto dto);
-        Task<ReservationDto> StartParkingAsync(string qrCode);
-        Task<ReservationDto> EndParkingAsync(string qrCode);
+        Task<ReservationDto> StartParkingAsync(ParkingRequest request);
+        Task<ReservationDto> EndParkingAsync(ParkingRequest request);
         Task<ReservationDto> CancelReservationAsync(int reservationId, int userId);
 
         Task<IEnumerable<ReservationDto>> GetUserReservationsAsync(int userId);
@@ -26,6 +28,7 @@ namespace ParkingSystem.Services
         private readonly IQRCodeService _qrCodeService;
         private readonly IParkingZoneService _parkingZoneService;
         private readonly ILogger<ReservationService> _logger;
+        private readonly Regex _plateRegex = new(@"^[A-Z]{3}\d{4}$", RegexOptions.Compiled);
 
         public ReservationService(AppDbContext context, IMapper mapper,IQRCodeService qrCodeService,
             IParkingZoneService parkingZoneService, ILogger<ReservationService> logger)
@@ -55,6 +58,8 @@ namespace ParkingSystem.Services
 
             if (car == null)
                 throw new InvalidOperationException("Car not found or doesn't belong to user");
+
+           
 
             // Verify spot is available
             var spot = await _context.ParkingSpots
@@ -91,26 +96,34 @@ namespace ParkingSystem.Services
             return await GetReservationDtoAsync(reservation.Id);
         }
 
-        public async Task<ReservationDto> StartParkingAsync(string qrCode)
+        public async Task<ReservationDto> StartParkingAsync(ParkingRequest request)
         {
-            if (!_qrCodeService.ValidateQRCode(qrCode))
+            //validate qr code
+            if (!_qrCodeService.ValidateQRCode(request.QrCode))
                 throw new InvalidOperationException("Invalid QR code");
+            // Validate plate number format 
+            if (!_plateRegex.IsMatch(request.PlateNumber))
+                throw new InvalidOperationException("Invalid license plate format");
 
-            var (reservationId, userId) = _qrCodeService.DecodeQRCode(qrCode);
+            var (reservationId, userId, timeStamp) = _qrCodeService.DecodeQRCode(request.QrCode);
+        
+            // Check timestamp freshness (24 hour window) 
+            if (DateTime.UtcNow - timeStamp > TimeSpan.FromHours(24))
+                throw new InvalidOperationException("Expired QR code");
 
             var reservation = await _context.Reservations
                 .Include(r => r.Car)
                 .Include(r => r.ParkingSpot)
-                .FirstOrDefaultAsync(r => r.Id == reservationId && r.UserId == userId);
-
-            if (reservation == null)
-                throw new KeyNotFoundException("Reservation not found");
-
+                .FirstOrDefaultAsync(r => r.Id == reservationId && r.UserId == userId) ?? throw new KeyNotFoundException("Reservation not found");
+            //validate reservation state
             if (reservation.Status != SessionStatus.Reserved)
                 throw new InvalidOperationException("Reservation is not in a valid state to start parking");
-
+            //validate entryTime
             if (reservation.EntryTime.HasValue)
                 throw new InvalidOperationException("Parking has already started for this reservation");
+            // Validate plate match
+            if (!reservation.Car.PlateNumber.Equals(request.PlateNumber, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("Scanned plate number does not match reservation");
 
 
             reservation.EntryTime = DateTime.UtcNow;
@@ -121,18 +134,26 @@ namespace ParkingSystem.Services
             return _mapper.Map<ReservationDto>(reservation);
         }
 
-        public async Task<ReservationDto> EndParkingAsync(string qrCode)
+        public async Task<ReservationDto> EndParkingAsync(ParkingRequest request)
         {
+            // Validate plate number format 
+            if (!_plateRegex.IsMatch(request.PlateNumber))
+                throw new InvalidOperationException("Invalid license plate format");
             var reservation = await _context.Reservations
                        .Include(r => r.ParkingSpot)
                            .ThenInclude(ps => ps.ParkingZone)
-                       .FirstOrDefaultAsync(r => r.QRCode == qrCode);
-
-            if (reservation == null)
-                throw new KeyNotFoundException("Reservation not found");
+                       .FirstOrDefaultAsync(r => r.QRCode == request.QrCode) ?? throw new KeyNotFoundException("Reservation not found");
+            
+            // Validate plate match
+            if (!reservation.Car.PlateNumber.Equals(request.PlateNumber, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("Scanned plate number does not match reservation");
+            //validate reservation status
+            if (reservation.Status != SessionStatus.Active)
+                throw new InvalidOperationException("Reservation is not in a valid state to end parking");
 
             if (reservation.ParkingSpot == null)
                 throw new InvalidOperationException("Parking spot not found for this reservation");
+           
 
             if (reservation.ParkingSpot.ParkingZone == null)
                 throw new InvalidOperationException("Parking zone not found for this spot");
@@ -145,8 +166,6 @@ namespace ParkingSystem.Services
             try
             {
                 // Calculate fee
-                if(reservation.Status != SessionStatus.Active)
-                    throw new InvalidOperationException("Reservation is not in a valid state to end parking");
                 
                 reservation.TotalAmount = await _parkingZoneService.CalculateParkingFee(
                     reservation.ParkingSpot.ParkingZone.Id,
