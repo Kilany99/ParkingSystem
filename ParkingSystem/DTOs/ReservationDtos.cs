@@ -14,6 +14,7 @@ namespace ParkingSystem.DTOs
             DateTime? ExitTime,
             decimal? TotalAmount,
             string QRCode,
+            bool IsPaid,
             SessionStatus Status,
             CarDto Car,
             ParkingSpotDto ParkingSpot

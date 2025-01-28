@@ -28,14 +28,16 @@ namespace ParkingSystem.Services
         }
         public async Task<CarDto> AddCarAsync(int userId, CreateCarDto dto)
         {
+            // Validate plate number format first
+            if (!_plateRegex.IsMatch(dto.PlateNumber))
+                throw new InvalidOperationException("Invalid license plate format");
+
             // Check if plate number already exists
             if (await _context.Cars.AnyAsync(c => c.PlateNumber == dto.PlateNumber))
             {
                 throw new InvalidOperationException("Car with this plate number already exists");
             }
-            // Validate plate number format first
-            if (!_plateRegex.IsMatch(dto.PlateNumber))
-                throw new InvalidOperationException("Invalid license plate format");
+           
 
             var car = new Car
             {

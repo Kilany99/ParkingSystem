@@ -12,7 +12,7 @@ using ParkingSystem.Data;
 namespace ParkingSystem.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20250128043630_NewMigration")]
+    [Migration("20250128071027_NewMigration")]
     partial class NewMigration
     {
         /// <inheritdoc />
@@ -189,6 +189,9 @@ namespace ParkingSystem.Migrations
 
                     b.Property<DateTime?>("ExitTime")
                         .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsPaid")
+                        .HasColumnType("bit");
 
                     b.Property<int>("ParkingSpotId")
                         .HasColumnType("int");

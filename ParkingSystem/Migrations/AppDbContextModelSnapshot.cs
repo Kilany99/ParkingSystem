@@ -187,6 +187,9 @@ namespace ParkingSystem.Migrations
                     b.Property<DateTime?>("ExitTime")
                         .HasColumnType("datetime2");
 
+                    b.Property<bool>("IsPaid")
+                        .HasColumnType("bit");
+
                     b.Property<int>("ParkingSpotId")
                         .HasColumnType("int");
 

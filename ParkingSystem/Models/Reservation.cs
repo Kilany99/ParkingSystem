@@ -25,6 +25,8 @@ namespace ParkingSystem.Models
         [Column(TypeName = "decimal(18,2)")]
         public decimal? TotalAmount { get; set; }
 
+        public bool IsPaid { get; set; } = false;
+
         [Required]
         public string QRCode { get; set; } = string.Empty;
 

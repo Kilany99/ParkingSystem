@@ -20,9 +20,24 @@ namespace ParkingSystem.Controllers
         [HttpPost]
         public async Task<ActionResult<CarDto>> AddCar(CreateCarDto dto)
         {
-            var userId = User.GetUserId();
-            var result = await _carService.AddCarAsync(userId, dto);
-            return Ok(result);
+            try
+            {
+                var userId = User.GetUserId();
+                var result = await _carService.AddCarAsync(userId, dto);
+                return Ok(result);
+            }
+            catch(InvalidOperationException ex) when (ex.Message.Contains("Invalid")) 
+            {
+                return StatusCode(500, "Invalid license plate format");
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("exists"))
+            {
+                return StatusCode(500, "Car with this plate number already exists");
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         [HttpGet]

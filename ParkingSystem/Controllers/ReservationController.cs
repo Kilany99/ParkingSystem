@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using ParkingSystem.Attributes;
 using ParkingSystem.DTOs;
+using ParkingSystem.Enums;
 using ParkingSystem.Helpers;
 using ParkingSystem.Services;
 using static ParkingSystem.DTOs.ReservationDtos;
@@ -63,34 +64,50 @@ namespace ParkingSystem.Controllers
                 var result = await _reservationService.StartParkingAsync(request);
                 return Ok(result);
             }
-            catch (InvalidOperationException ex)
+            catch (InvalidOperationException ex) when (ex.Message.Contains("Expired")) 
             {
-                return BadRequest(ex);
+                return BadRequest("QR code Expired");
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("mismatch"))
+            {
+                return BadRequest("Plate number is not matching");
+
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating reservation");
+                _logger.LogError(ex, "Error starting parking reservation");
                 return StatusCode(500, "An error occurred while start parking reservation "+ ex);
 
             }
         }
 
         [HttpPost("end")] //Called from parking zone with QR code reader and plate number reader on the exit of the parking.
-        public async Task<ActionResult<ReservationDto>> EndParking([FromBody] ParkingRequest request)
+        public async Task<ActionResult<ReservationDto>> EndParking([FromBody] ParkingRequest request, PaymentMethod method)
         {
             try
             {
-                var result = await _reservationService.EndParkingAsync(request);
+                var result = await _reservationService.EndParkingAsync(request, method);
                 return Ok(result);
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("plate format"))
+            {
+                return BadRequest("Plate number is not in correct form");
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("QR"))
+            {
+                return BadRequest("Invalid QR code");
+
             }
             catch (InvalidOperationException ex)
             {
-                return BadRequest(ex);
+                return BadRequest(ex.Message);
+
             }
+
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating reservation");
-                return StatusCode(500, "An error occurred while start parking reservation " + ex);
+                _logger.LogError(ex, "Error ending parking reservation");
+                return StatusCode(500, "An error occurred while ending parking reservation " + ex.Message);
 
             }
         }

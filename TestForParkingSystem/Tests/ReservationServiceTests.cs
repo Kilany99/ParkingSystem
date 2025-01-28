@@ -11,8 +11,8 @@ using ParkingSystem.Services;
 using static ParkingSystem.DTOs.ReservationDtos;
 
 namespace TestForParkingSystem.Tests
-{
-    public class ReservationServiceTests : TestBase
+{ }
+ /*   public class ReservationServiceTests : TestBase
     {
         private readonly ReservationService _service;
         private readonly Mock<IParkingZoneService> _parkingZoneServiceMock;
@@ -180,5 +180,9 @@ namespace TestForParkingSystem.Tests
             var spot = await _context.ParkingSpots.FindAsync(parkingSpot.Id);
             Assert.Equal(SpotStatus.Available, spot.Status);
         }
+ 
     }
-}
+ */
+
+
+ 

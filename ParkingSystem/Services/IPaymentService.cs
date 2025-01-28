@@ -30,10 +30,15 @@ namespace ParkingSystem.Services
                 .FirstOrDefaultAsync(r => r.Id == reservationId);
 
             if (reservation == null)
-                throw new KeyNotFoundException("Reservation not found");
+                throw new KeyNotFoundException("Payment: Reservation not found");
 
             if (reservation.Status != SessionStatus.Completed)
-                throw new InvalidOperationException("Parking session not completed");
+                throw new InvalidOperationException("Payment: Parking session not completed");
+            if(reservation.IsPaid)
+                throw new InvalidOperationException("Payment: Reservation is already paid");
+
+            if (reservation?.TotalAmount == null || reservation.TotalAmount <= 0)
+                throw new InvalidOperationException("Payment: Invalid payment amount");
 
             var payment = new Payment
             {
@@ -44,15 +49,22 @@ namespace ParkingSystem.Services
                 CreatedAt = DateTime.UtcNow
             };
 
-            _context.Payments.Add(payment);
-
             // Simulate payment processing
+            bool paymentSuccess = true;
             payment.Status = PaymentStatus.Completed;
             payment.CompletedAt = DateTime.UtcNow;
+            if (paymentSuccess)
+            {
+                //update reservation paid status
+                reservation.IsPaid = true;
+                _context.Payments.Add(payment);
+                await _context.SaveChangesAsync();
 
-            await _context.SaveChangesAsync();
+                return _mapper.Map<PaymentDto>(payment);
+            }
+            else
+                throw new Exception("Payment: processing failed");
 
-            return _mapper.Map<PaymentDto>(payment);
         }
 
         public async Task<PaymentDto> GetPaymentDetailsAsync(int paymentId)

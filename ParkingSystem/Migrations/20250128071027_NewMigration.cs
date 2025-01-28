@@ -110,6 +110,7 @@ namespace ParkingSystem.Migrations
                     EntryTime = table.Column<DateTime>(type: "datetime2", nullable: true),
                     ExitTime = table.Column<DateTime>(type: "datetime2", nullable: true),
                     TotalAmount = table.Column<decimal>(type: "decimal(18,2)", nullable: true),
+                    IsPaid = table.Column<bool>(type: "bit", nullable: false),
                     QRCode = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Status = table.Column<int>(type: "int", nullable: false)
                 },

@@ -5,6 +5,7 @@ using ParkingSystem.DTOs;
 using ParkingSystem.Enums;
 using ParkingSystem.Models;
 using System.Text.RegularExpressions;
+using static ParkingSystem.DTOs.PaymentDtos;
 using static ParkingSystem.DTOs.ReservationDtos;
 
 namespace ParkingSystem.Services
@@ -13,7 +14,7 @@ namespace ParkingSystem.Services
     {
         Task<ReservationDto> CreateReservationAsync(int userId, CreateReservationDto dto);
         Task<ReservationDto> StartParkingAsync(ParkingRequest request);
-        Task<ReservationDto> EndParkingAsync(ParkingRequest request);
+        Task<ReservationDto> EndParkingAsync(ParkingRequest request, PaymentMethod method);
         Task<ReservationDto> CancelReservationAsync(int reservationId, int userId);
 
         Task<IEnumerable<ReservationDto>> GetUserReservationsAsync(int userId);
@@ -28,16 +29,18 @@ namespace ParkingSystem.Services
         private readonly IQRCodeService _qrCodeService;
         private readonly IParkingZoneService _parkingZoneService;
         private readonly ILogger<ReservationService> _logger;
+        private readonly IPaymentService _paymentService;
         private readonly Regex _plateRegex = new(@"^[A-Z]{3}\d{4}$", RegexOptions.Compiled);
 
-        public ReservationService(AppDbContext context, IMapper mapper,IQRCodeService qrCodeService,
-            IParkingZoneService parkingZoneService, ILogger<ReservationService> logger)
+        public ReservationService(AppDbContext context, IMapper mapper, IQRCodeService qrCodeService,
+            IParkingZoneService parkingZoneService, ILogger<ReservationService> logger, IPaymentService paymentService)
         {
             _context = context;
             _mapper = mapper;
             _qrCodeService = qrCodeService;
             _parkingZoneService = parkingZoneService;
             _logger = logger;
+            _paymentService = paymentService;
         }
 
         public async Task<ReservationDto> CreateReservationAsync(int userId, CreateReservationDto dto)
@@ -134,26 +137,40 @@ namespace ParkingSystem.Services
             return _mapper.Map<ReservationDto>(reservation);
         }
 
-        public async Task<ReservationDto> EndParkingAsync(ParkingRequest request)
+        public async Task<ReservationDto> EndParkingAsync(ParkingRequest request,PaymentMethod method)
         {
+            if (!Enum.IsDefined(typeof(PaymentMethod), method))
+            {
+                throw new ArgumentException("Invalid payment method selected");
+            }
+
             // Validate plate number format 
-            if (!_plateRegex.IsMatch(request.PlateNumber))
-                throw new InvalidOperationException("Invalid license plate format");
+            if (!_plateRegex.IsMatch(request.PlateNumber)||string.IsNullOrEmpty(request.PlateNumber))
+                throw new InvalidOperationException("plate format in not correct");
+            //validate qr code
+            if (!_qrCodeService.ValidateQRCode(request.QrCode)||string.IsNullOrEmpty(request.QrCode))
+                throw new InvalidOperationException("Invalid QR code");
             var reservation = await _context.Reservations
+                        .Include(r => r.Car)
                        .Include(r => r.ParkingSpot)
-                           .ThenInclude(ps => ps.ParkingZone)
-                       .FirstOrDefaultAsync(r => r.QRCode == request.QrCode) ?? throw new KeyNotFoundException("Reservation not found");
-            
-            // Validate plate match
-            if (!reservation.Car.PlateNumber.Equals(request.PlateNumber, StringComparison.OrdinalIgnoreCase))
+                            .ThenInclude(ps => ps.ParkingZone)
+                       .FirstOrDefaultAsync(r => r.QRCode == request.QrCode);
+                    if(reservation ==null)
+                       throw new KeyNotFoundException("Reservation not found");
+            //validate plate number
+            if (string.IsNullOrEmpty(reservation.Car.PlateNumber)||
+                !reservation.Car.PlateNumber.Equals(request.PlateNumber, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidOperationException("Scanned plate number does not match reservation");
-            //validate reservation status
             if (reservation.Status != SessionStatus.Active)
                 throw new InvalidOperationException("Reservation is not in a valid state to end parking");
 
+            if (reservation.EntryTime == null)
+                throw new InvalidOperationException("Cannot end parking for not started reservation!");
+            
             if (reservation.ParkingSpot == null)
                 throw new InvalidOperationException("Parking spot not found for this reservation");
            
+
 
             if (reservation.ParkingSpot.ParkingZone == null)
                 throw new InvalidOperationException("Parking zone not found for this spot");
@@ -177,7 +194,10 @@ namespace ParkingSystem.Services
                     "Calculated parking fee for reservation {ReservationId}: {Amount}",
                     reservation.Id,
                     reservation.TotalAmount);
-
+                //complete payment first
+                ProcessPaymentDto paymentDto = new (reservation.Id, reservation.TotalAmount.Value, method);
+                await _paymentService.ProcessPaymentAsync(reservation.Id, paymentDto);
+                reservation.IsPaid = true;
                 reservation.Status = SessionStatus.Completed;
 
                 // Update parking spot status
@@ -187,6 +207,10 @@ namespace ParkingSystem.Services
                 await _context.SaveChangesAsync();
 
                 return _mapper.Map<ReservationDto>(reservation);
+            }
+            catch(Exception ex ) when (ex.Message.Contains($"Payment:"))
+            {
+                throw new InvalidOperationException("There was an issue during processing payment" + ex.Message);
             }
             catch (Exception ex)
             {
@@ -207,6 +231,8 @@ namespace ParkingSystem.Services
             if (reservation == null)
                 throw new KeyNotFoundException("Reservation not found");
 
+            if (reservation.Car == null)
+                throw new InvalidOperationException("No car associated with this reservation");
             // Check if reservation can be cancelled
             if (reservation.Status != SessionStatus.Reserved)
                 throw new InvalidOperationException("Only reserved status reservations can be cancelled");
