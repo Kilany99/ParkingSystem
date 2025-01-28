@@ -12,7 +12,7 @@ The **Parking Management System** is a full-stack application designed to stream
 - **Admin Panel**: Admins can manage parking spots, monitor reservations, and update parking space statuses.
 - **Payment Integration**: Payment options are provided for users to pay for their parking bookings.
 - **Mobile App Integration**: A mobile application built using Kotlin for a native Android experience, providing access to all features on the go.
-
+- To be integrated with Automatic License Plate Recognition (ALPR) that reads the plate number from a camera and sends it in a certain format alongside with the QR code form the scanner to handle the reservation validation
 ## Tech Stack
 
 - **Frontend**: Angular
