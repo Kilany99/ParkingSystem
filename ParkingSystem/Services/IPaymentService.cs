@@ -37,7 +37,7 @@ namespace ParkingSystem.Services
             if(reservation.IsPaid)
                 throw new InvalidOperationException("Payment: Reservation is already paid");
 
-            if (reservation?.TotalAmount == null || reservation.TotalAmount <= 0)
+            if (dto.Amount == null || dto.Amount <= 0)
                 throw new InvalidOperationException("Payment: Invalid payment amount");
 
             var payment = new Payment

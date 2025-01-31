@@ -120,8 +120,11 @@ builder.Services.AddAuthorization(options =>
         policy.RequireRole(Roles.Admin));
 
 
-    options.AddPolicy("AllUsers", policy =>
+    options.AddPolicy("User", policy =>
         policy.RequireRole(Roles.Admin, Roles.User));
+
+    options.AddPolicy("MobileOnly", policy =>
+        policy.RequireClaim("client_type", "mobile"));
 });
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));

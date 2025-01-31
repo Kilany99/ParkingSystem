@@ -6,7 +6,7 @@ namespace ParkingSystem.DTOs
 {
     public class ReservationDtos
     {
-        public record CreateReservationDto(int CarId, int ParkingSpotId);
+        public record CreateReservationDto(int CarId, int ParkingSpotId,int ParkingZoneId);
         public record ReservationDto(
             int Id,
             DateTime CreatedAt,
