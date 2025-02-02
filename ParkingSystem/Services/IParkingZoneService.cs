@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using ParkingSystem.Data;
 using ParkingSystem.Enums;
 using ParkingSystem.Models;
+using static ParkingSystem.DTOs.CarDtos;
 using static ParkingSystem.DTOs.ParkingZoneDtos;
 
 namespace ParkingSystem.Services
@@ -12,8 +13,8 @@ namespace ParkingSystem.Services
         Task<ParkingZoneDto> CreateZoneAsync(CreateParkingZoneDto dto);
         Task<IEnumerable<ParkingZoneDto>> GetAllZonesAsync();
         Task<ParkingZoneStatusDto> GetZoneStatusAsync(int zoneId);
-        Task<IEnumerable<ParkingSpotDto>> GetAvailableSpotsAsync(int zoneId);
-
+        Task<IEnumerable<ParkingSpotDto>> GetSpotsAsync(int zoneId, SpotStatus status);
+        Task<IEnumerable<ParkingSpotDto>> GetAllSpotsAsync(int zoneId);
         Task<decimal> CalculateParkingFee(int zoneId, DateTime entryTime, DateTime exitTime);
         Task<bool> IsZoneFull(int zoneId);
     }
@@ -54,7 +55,8 @@ namespace ParkingSystem.Services
                         ParkingZoneId = zone.Id,
                         Floor = floor,
                         SpotNumber = $"F{floor}S{spot}",
-                        Status = SpotStatus.Available
+                        Status = SpotStatus.Available,
+                        ParkingZone = zone
                     };
 
                     _context.ParkingSpots.Add(parkingSpot);
@@ -71,31 +73,62 @@ namespace ParkingSystem.Services
                 .ToListAsync());
 
 
-        public async Task<ParkingZoneStatusDto> GetZoneStatusAsync(int zoneId)
-        {
-            var zone = await _context.ParkingZones
-                .Include(z => z.ParkingSpots)
-                .FirstOrDefaultAsync(z => z.Id == zoneId)??
-                throw new KeyNotFoundException("Parking zone not found");
-
-            var availableSpots = zone.ParkingSpots.Count(s => s.Status == SpotStatus.Available);
-            var totalSpots = zone.ParkingSpots.Count;
-
-            return new ParkingZoneStatusDto
+            public async Task<ParkingZoneStatusDto> GetZoneStatusAsync(int zoneId)
             {
-                ZoneId = zone.Id,
-                ZoneName = zone.Name,
-                TotalSpots = totalSpots,
-                AvailableSpots = availableSpots,
-                IsFull = availableSpots == 0
-            };
+                var zone = await _context.ParkingZones
+                    .Include(z => z.ParkingSpots)
+                    .FirstOrDefaultAsync(z => z.Id == zoneId)??
+                    throw new KeyNotFoundException("Parking zone not found");
+
+                var spots = zone.ParkingSpots;
+                // Calculate distribution
+                var distribution = new ParkingSpotDistributionDto
+                {
+                    Available = spots.Count(s => s.Status == SpotStatus.Available),
+                    Occupied = spots.Count(s => s.Status == SpotStatus.Occupied),
+                    Reserved = spots.Count(s => s.Status == SpotStatus.Reserved),
+                    Maintenance = spots.Count(s => s.Status == SpotStatus.Maintenance),
+                    AvailableByFloor = spots
+                       .Where(s => s.Status == SpotStatus.Available)
+                       .GroupBy(s => s.Floor)
+                       .ToDictionary(
+                           g => g.Key,
+                           g => g.Count()
+                       )
+                };
+                return new ParkingZoneStatusDto
+                {
+                    ZoneId = zone.Id,
+                    ZoneName = zone.Name,
+                    TotalSpots = spots.Count,
+                    AvailableSpots = distribution.Available,
+                    IsFull = distribution.Available == 0,
+                    Distribution = distribution
+                };
+            }
+
+        public async Task<IEnumerable<ParkingSpotDto>> GetSpotsAsync(int zoneId, SpotStatus status)
+        {
+            // Validate status value
+            if (!Enum.IsDefined(typeof(SpotStatus), status))
+            {
+                throw new ArgumentException("Invalid spot status");
+            }
+
+            // Fetch ParkingSpots along with their CurrentReservation details
+            var spotsWithReservations = await _context.ParkingSpots
+                .Where(s => s.ParkingZoneId == zoneId && s.Status == status)
+                .Include(s => s.CurrentReservation) // Eager load the Reservation related to the Spot
+                .ThenInclude(r => r.Car) // Optional: Eager load the Car data (if needed)
+                .Include(s => s.ParkingZone) // Eager load ParkingZone if needed
+                .ToListAsync();
+
+            // Map the fetched data to ParkingSpotDto, including the reservation details
+            return _mapper.Map<IEnumerable<ParkingSpotDto>>(spotsWithReservations);
         }
 
-        public async Task<IEnumerable<ParkingSpotDto>> GetAvailableSpotsAsync(int zoneId)=>
-           _mapper.Map<IEnumerable<ParkingSpotDto>>(await _context.ParkingSpots
-                .Where(s => s.ParkingZoneId == zoneId && s.Status == SpotStatus.Available)
-                .ToListAsync());
-     
+
+
         public async Task<bool> IsZoneFull(int zoneId)
         {
             var zone = await _context.ParkingZones
@@ -135,7 +168,14 @@ namespace ParkingSystem.Services
 
             return totalFee;
         }
-      
+        public async Task<IEnumerable<ParkingSpotDto>> GetAllSpotsAsync(int zoneId)
+        {
+            var spots = await _context.ParkingSpots
+                .Where(s => s.ParkingZoneId == zoneId)
+                .ToListAsync();
+
+            return _mapper.Map<IEnumerable<ParkingSpotDto>>(spots);
+        }
 
         private decimal GetHourlyRate(ParkingZone zone, DateTime time)=>
             // Standard rate

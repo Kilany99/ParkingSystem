@@ -32,8 +32,8 @@ namespace ParkingSystem.Services
             if (reservation == null)
                 throw new KeyNotFoundException("Payment: Reservation not found");
 
-            if (reservation.Status != SessionStatus.Completed)
-                throw new InvalidOperationException("Payment: Parking session not completed");
+            if (reservation.Status != SessionStatus.Active)
+                throw new InvalidOperationException("Payment: Parking session not Active");
             if(reservation.IsPaid)
                 throw new InvalidOperationException("Payment: Reservation is already paid");
 

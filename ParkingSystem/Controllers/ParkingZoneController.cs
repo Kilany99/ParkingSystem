@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using ParkingSystem.Enums;
 using ParkingSystem.Services;
 using static ParkingSystem.DTOs.ParkingZoneDtos;
 
@@ -53,11 +54,18 @@ namespace ParkingSystem.Controllers
         }
 
         [HttpGet("{id}/available-spots")]
-        public async Task<ActionResult<IEnumerable<ParkingSpotDto>>> GetAvailableSpots(int id)
+        public async Task<ActionResult<IEnumerable<ParkingSpotDto>>> GetSpots(int id, SpotStatus status)
         {
-            var spots = await _parkingZoneService.GetAvailableSpotsAsync(id);
+            var spots = await _parkingZoneService.GetSpotsAsync(id,status);
             return Ok(spots);
         }
+        [HttpGet("{id}/all-spots")]
+        public async Task<ActionResult<IEnumerable<ParkingSpotDto>>> GetAllSpots(int id)
+        {
+            var spots = await _parkingZoneService.GetAllSpotsAsync(id);
+            return Ok(spots);
+        }
+
 
 
     }

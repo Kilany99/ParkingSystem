@@ -21,12 +21,14 @@ namespace ParkingSystem.Helpers
             CreateMap<CreateCarDto, Car>();
 
             CreateMap<ParkingZone, ParkingZoneDto>();
-            CreateMap<ParkingSpot, ParkingSpotDto>();
+            CreateMap<ParkingSpot, ParkingSpotDto>()
+                .ForMember(dest => dest.CurrentReservation, opt => opt.MapFrom(src => src.CurrentReservation));
+
 
             CreateMap<Reservation, ReservationDto>()
                 .ForMember(dest => dest.Car, opt => opt.MapFrom(src => src.Car))
-                .ForMember(dest => dest.ParkingSpot, opt => opt.MapFrom(src => src.ParkingSpot));
-
+                .ForMember(dest => dest.ParkingSpot, opt => opt.MapFrom(src => src.ParkingSpot))
+                .ForMember(dest => dest.ParkingZone, opt => opt.MapFrom(src => src.ParkingSpot.ParkingZone));
             CreateMap<Payment, PaymentDto>();
 
         }

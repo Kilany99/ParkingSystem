@@ -1,4 +1,8 @@
 ﻿using ParkingSystem.Enums;
+using ParkingSystem.Models;
+using System.Text.Json.Serialization;
+using static ParkingSystem.DTOs.CarDtos;
+using static ParkingSystem.DTOs.ReservationDtos;
 
 namespace ParkingSystem.DTOs
 {
@@ -16,7 +20,7 @@ namespace ParkingSystem.DTOs
             public int AvailableSpots { get; init; }
             public decimal HourlyRate { get; init; }
             public bool IsFull { get; init; }
-            public ParkingSpotDistributionDto Distribution { get; init; }
+            public required ParkingSpotDistributionDto Distribution { get; init; }
 
         }
         public record ParkingSpotDistributionDto
@@ -25,9 +29,15 @@ namespace ParkingSystem.DTOs
             public int Occupied { get; init; }
             public int Reserved { get; init; }
             public int Maintenance { get; init; }
-            public Dictionary<int, int> AvailableByFloor { get; init; }
+            public required Dictionary<int, int> AvailableByFloor { get; init; }
         }
-        public record ParkingSpotDto(int Id, string SpotNumber, int Floor, SpotStatus Status, SpotType Type);
+        public record ParkingSpotDto(int Id,
+             string SpotNumber ,
+             int Floor ,
+             SpotStatus Status,
+             SpotType Type,
+             ReservationDto? CurrentReservation,
+             ParkingZoneDto ParkingZone);
 
     }
 }

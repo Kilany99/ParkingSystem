@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace ParkingSystem.Models
 {
@@ -25,7 +26,7 @@ namespace ParkingSystem.Models
 
         // Navigation properties
         public virtual User User { get; set; }
-
+        [JsonIgnore]
         public virtual ICollection<Reservation> ParkingSessions { get; set; } = new List<Reservation>();
     }
 }

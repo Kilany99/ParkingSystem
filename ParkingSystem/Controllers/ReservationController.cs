@@ -34,11 +34,9 @@ namespace ParkingSystem.Controllers
                 // Check for active reservations
                 if (await _reservationService.HasActiveReservation(dto.CarId))
                 {
-                    var activeReservation = await _reservationService.GetActiveReservation(dto.CarId);
                     return BadRequest(new
                     {
-                        Error = "Car has active reservation",
-                        ActiveReservation = activeReservation
+                        Error = "Car has active reservation"
                     });
                 }
 
@@ -149,19 +147,33 @@ namespace ParkingSystem.Controllers
                 return StatusCode(500, "An error occurred while cancelling the reservation");
             }
         }
-    /*    [HttpGet("car/{carId}/active")]
-        public async Task<ActionResult<ReservationDto>> GetActiveReservation(int carId)
+
+        [HttpGet("today-revenue")]
+        public async Task<IActionResult> GetTodayRevenue()
         {
-            try
-            {
-                var reservation = await _reservationService.GetActiveReservation(carId);
-                return Ok(reservation);
-            }
-            catch (KeyNotFoundException)
-            {
-                return NotFound("No active reservation found for this car");
-            }
+            var revenue = await _reservationService.GetTodayRevenueAsync();
+            return Ok(new { todayRevenue = revenue });
         }
-    */
+        [HttpGet("today-activity")]
+        public async Task<IActionResult> GetTodayActivity()
+        {
+            var activity = await _reservationService.GetTodayActivity();
+            return Ok(activity);
+
+        }
+        /*    [HttpGet("car/{carId}/active")]
+            public async Task<ActionResult<ReservationDto>> GetActiveReservation(int carId)
+            {
+                try
+                {
+                    var reservation = await _reservationService.GetActiveReservation(carId);
+                    return Ok(reservation);
+                }
+                catch (KeyNotFoundException)
+                {
+                    return NotFound("No active reservation found for this car");
+                }
+            }
+        */
     }
 }

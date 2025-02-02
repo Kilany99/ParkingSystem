@@ -1,10 +1,10 @@
 ﻿using AutoMapper;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ParkingSystem.Data;
 using ParkingSystem.DTOs;
 using ParkingSystem.Enums;
 using ParkingSystem.Models;
-using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using static ParkingSystem.DTOs.PaymentDtos;
 using static ParkingSystem.DTOs.ReservationDtos;
@@ -22,6 +22,8 @@ namespace ParkingSystem.Services
         Task<decimal> CalculateParkingFeeAsync(int reservationId);
         public Task<ReservationDto> GetActiveReservation(int carId);
         Task<bool> HasActiveReservation(int carId);
+        Task<decimal> GetTodayRevenueAsync();
+        Task<object> GetTodayActivity();
     }
     public class ReservationService : IReservationService
     {
@@ -83,9 +85,12 @@ namespace ParkingSystem.Services
                 ParkingSpotId = dto.ParkingSpotId,
                 CreatedAt = DateTime.UtcNow,
                 Status = SessionStatus.Reserved,  // Initial status is Reserved
+                
 
             };
             _context.Reservations.Add(reservation);
+            reservation.ParkingSpot = spot;
+            reservation.ParkingSpot.ParkingZone = parkingZone;
             await _context.SaveChangesAsync();
 
             reservation.QRCode = _qrCodeService.GenerateQRCode(
@@ -294,37 +299,85 @@ namespace ParkingSystem.Services
                 exitTime);
         }
 
-        public async Task<IEnumerable<ReservationDto>> GetUserReservationsAsync(int userId) =>
-        
-             _mapper.Map < IEnumerable < ReservationDto >>( await _context.Reservations
+        public async Task<IEnumerable<ReservationDto>> GetUserReservationsAsync(int userId)
+        {
+            var reservations = await _context.Reservations
                 .Include(r => r.Car)
                 .Include(r => r.ParkingSpot)
+                    .ThenInclude(ps => ps.ParkingZone) // Include ParkingZone through ParkingSpot
                 .Where(r => r.UserId == userId)
                 .OrderByDescending(r => r.EntryTime)
-                .ToListAsync());
+                .ToListAsync();
 
-        
+            return _mapper.Map<IEnumerable<ReservationDto>>(reservations);
+        }
 
-        public async Task<ReservationDto> GetActiveReservation(int carId) =>
-            _mapper.Map<ReservationDto>(await _context.Reservations
-                 .Include(r => r.ParkingSpot)
-                     .ThenInclude(ps => ps.ParkingZone)
-                 .Include(r => r.Car)
-                 .FirstOrDefaultAsync(r => r.CarId == carId
-                                      && r.Status == SessionStatus.Active))
-                ?? throw new KeyNotFoundException("No active reservation found for this car");
+        public async Task<ReservationDto> GetActiveReservation(int carId)
+        {
+            var reservation = await _context.Reservations
+                .Include(r => r.ParkingSpot)
+                    .ThenInclude(ps => ps.ParkingZone)
+                .Include(r => r.Car)
+                .FirstOrDefaultAsync(r => r.CarId == carId
+                                     && r.Status == SessionStatus.Active);
 
-        
+            if (reservation == null)
+                throw new KeyNotFoundException("No active reservation found for this car");
+
+            return _mapper.Map<ReservationDto>(reservation);
+        }
 
         public async Task<bool> HasActiveReservation(int carId) =>
              await _context.Reservations
                 .AnyAsync(r => r.CarId == carId && (r.Status == SessionStatus.Active||r.Status == SessionStatus.Reserved));
+        public async Task<decimal> GetTodayRevenueAsync()
+        {
+            DateTime today = DateTime.UtcNow.Date;
 
+            return await _context.Reservations
+                .Where(r => r.IsPaid && r.CreatedAt >= today)
+                .SumAsync(r => r.TotalAmount ?? 0);
+        }
         private async Task<ReservationDto> GetReservationDtoAsync(int reservationId) =>
          _mapper.Map<ReservationDto>(await _context.Reservations
              .Include(r => r.Car)
              .Include(r => r.ParkingSpot)
-             .FirstOrDefaultAsync(r => r.Id == reservationId) ?? throw new InvalidOperationException("Not found!"));
+             .FirstOrDefaultAsync(r => r.Id == reservationId)
+             );
+
+        public async Task<object> GetTodayActivity()
+        {
+            var today = DateTime.UtcNow.Date;
+
+            var totalReservations = await _context.Reservations
+                .Where(r => r.CreatedAt >= today)
+                .CountAsync();
+
+            var totalCheckIns = await _context.Reservations
+                .Where(r => r.EntryTime >= today)
+                .CountAsync();
+
+            var totalCheckOuts = await _context.Reservations
+                .Where(r => r.ExitTime >= today)
+                .CountAsync();
+
+            var totalRevenue = await _context.Reservations
+                .Where(r => r.CreatedAt >= today && r.IsPaid)
+                .SumAsync(r => r.TotalAmount ?? 0);
+
+            var availableSpaces = await _context.ParkingSpots.CountAsync(p => p.Status == SpotStatus.Available);
+            var occupiedSpaces = await _context.ParkingSpots.CountAsync(p => p.Status == SpotStatus.Occupied );
+
+            return new
+            {
+                totalReservations,
+                totalCheckIns,
+                totalCheckOuts,
+                totalRevenue,
+                availableSpaces,
+                occupiedSpaces
+            };
+        }
 
 
 
@@ -346,9 +399,11 @@ namespace ParkingSystem.Services
             else
                 return 0; //non paid reservation with no charges
         }
-        private bool WithinCnxDuration(Reservation reservation) =>
-             (DateTime.UtcNow - reservation.CreatedAt).TotalMinutes <= 15;
-        
+
+        private bool WithinCnxDuration(Reservation reservation)
+        {
+            return (DateTime.UtcNow - reservation.CreatedAt).TotalMinutes <= 15;
+        }
 
 
 
