@@ -17,7 +17,8 @@ namespace ParkingSystem.DTOs
             bool IsPaid,
             SessionStatus Status,
             CarDto Car,
-            ParkingSpotDto ParkingSpot
+            ParkingSpotDto ParkingSpot,
+            ParkingZoneDto ParkingZone
         );
     
     }

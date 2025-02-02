@@ -65,22 +65,17 @@ namespace ParkingSystem.Services
             return _mapper.Map<ParkingZoneDto>(zone);
         }
 
-        public async Task<IEnumerable<ParkingZoneDto>> GetAllZonesAsync()
-        {
-            var zones = await _context.ParkingZones
+        public async Task<IEnumerable<ParkingZoneDto>> GetAllZonesAsync() =>
+            _mapper.Map<IEnumerable<ParkingZoneDto>>(await _context.ParkingZones
                 .Include(z => z.ParkingSpots)
-                .ToListAsync();
+                .ToListAsync());
 
-            return _mapper.Map<IEnumerable<ParkingZoneDto>>(zones);
-        }
 
         public async Task<ParkingZoneStatusDto> GetZoneStatusAsync(int zoneId)
         {
             var zone = await _context.ParkingZones
                 .Include(z => z.ParkingSpots)
-                .FirstOrDefaultAsync(z => z.Id == zoneId);
-
-            if (zone == null)
+                .FirstOrDefaultAsync(z => z.Id == zoneId)??
                 throw new KeyNotFoundException("Parking zone not found");
 
             var availableSpots = zone.ParkingSpots.Count(s => s.Status == SpotStatus.Available);
@@ -96,23 +91,16 @@ namespace ParkingSystem.Services
             };
         }
 
-        public async Task<IEnumerable<ParkingSpotDto>> GetAvailableSpotsAsync(int zoneId)
-        {
-            var spots = await _context.ParkingSpots
+        public async Task<IEnumerable<ParkingSpotDto>> GetAvailableSpotsAsync(int zoneId)=>
+           _mapper.Map<IEnumerable<ParkingSpotDto>>(await _context.ParkingSpots
                 .Where(s => s.ParkingZoneId == zoneId && s.Status == SpotStatus.Available)
-                .ToListAsync();
-
-            return _mapper.Map<IEnumerable<ParkingSpotDto>>(spots);
-        }
-
+                .ToListAsync());
      
         public async Task<bool> IsZoneFull(int zoneId)
         {
             var zone = await _context.ParkingZones
                 .Include(z => z.ParkingSpots)
-                .FirstOrDefaultAsync(z => z.Id == zoneId);
-
-            if (zone == null)
+                .FirstOrDefaultAsync(z => z.Id == zoneId)??
                 throw new KeyNotFoundException($"Parking zone {zoneId} not found");
 
             var availableSpots = zone.ParkingSpots.Count(s => s.Status == SpotStatus.Available);
@@ -147,12 +135,11 @@ namespace ParkingSystem.Services
 
             return totalFee;
         }
+      
 
-        private decimal GetHourlyRate(ParkingZone zone, DateTime time)
-        {
+        private decimal GetHourlyRate(ParkingZone zone, DateTime time)=>
             // Standard rate
-            return zone.HourlyRate;
-        }
+             zone.HourlyRate;
     }
 
 }

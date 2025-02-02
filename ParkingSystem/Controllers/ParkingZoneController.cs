@@ -7,7 +7,7 @@ namespace ParkingSystem.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-   // [Authorize]
+    [Authorize]
     public class ParkingZoneController : ControllerBase
     {
         private readonly IParkingZoneService _parkingZoneService;
@@ -58,5 +58,7 @@ namespace ParkingSystem.Controllers
             var spots = await _parkingZoneService.GetAvailableSpotsAsync(id);
             return Ok(spots);
         }
+
+
     }
 }

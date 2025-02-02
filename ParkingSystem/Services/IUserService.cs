@@ -37,55 +37,33 @@ namespace ParkingSystem.Services
             return _mapper.Map<UserDto>(user);
         }
 
-        public async Task<IEnumerable<UserDto>> GetAllUsers()
-        {
-            var users = await _context.Users
+        public async Task<IEnumerable<UserDto>> GetAllUsers() =>
+           _mapper.Map<IEnumerable<UserDto>>(await _context.Users
                 .AsNoTracking()
-                .ToListAsync();
+                .ToListAsync());
 
-            return _mapper.Map<IEnumerable<UserDto>>(users);
-        }
-        public async Task<UserDto> GetUserById(int id)
-        {
-            var user = await _context.Users
+        public async Task<UserDto> GetUserById(int id) =>
+            _mapper.Map<UserDto>(await _context.Users
                 .AsNoTracking()
-                .FirstOrDefaultAsync(u => u.Id == id);
+                .FirstOrDefaultAsync(u => u.Id == id)??
+                    throw new KeyNotFoundException($"User with ID {id} not found"));
 
-            if (user == null)
-                throw new KeyNotFoundException($"User with ID {id} not found");
-
-            return _mapper.Map<UserDto>(user);
-        }
-        public async Task<bool> DeleteUser(int id)
-        {
-            var user = await _context.Users.FindAsync(id);
-            if (user == null)
-                return false;
-
-            _context.Users.Remove(user);
-            await _context.SaveChangesAsync();
-            return true;
-        }
-
-        public async Task<UserDto> GetCurrentUser(int userId)
-        {
-            var user = await _context.Users
+        public async Task<bool> DeleteUser(int id) =>
+            await _context.Users.FindAsync(id) is { } user
+            ? await Task.FromResult(_context.Users.Remove(user) != null && await _context.SaveChangesAsync() > 0)
+                : false;
+        public async Task<UserDto> GetCurrentUser(int userId) =>
+            _mapper.Map<UserDto>(await _context.Users
                 .AsNoTracking()
-                .FirstOrDefaultAsync(u => u.Id == userId);
+                .FirstOrDefaultAsync(u => u.Id == userId)??
+                    throw new KeyNotFoundException("Current user not found"));
 
-            if (user == null)
-                throw new KeyNotFoundException("Current user not found");
-
-            return _mapper.Map<UserDto>(user);
-        }
 
         public async Task<UserDto> UpdateUser(int id, UpdateUserDto dto)
         {
             var user = await _context.Users
-                .FindAsync(id);
-
-            if (user == null)
-                throw new KeyNotFoundException($"User with ID {id} not found");
+                .FindAsync(id)??
+                    throw new KeyNotFoundException($"User with ID {id} not found");
 
             // Update only allowed fields
             user.Name = dto.Name;

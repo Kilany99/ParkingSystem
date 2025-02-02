@@ -143,15 +143,12 @@ namespace ParkingSystem.Services
             return new OkObjectResult("Password has been reset successfully.");
         }
 
-        private string HashPassword(string password)
-        {
-            return BCrypt.Net.BCrypt.HashPassword(password);
-        }
+        private string HashPassword(string password) =>
+            BCrypt.Net.BCrypt.HashPassword(password);
+        
 
-        private bool VerifyPassword(string password, string hash)
-        {
-            return BCrypt.Net.BCrypt.Verify(password, hash);
-        }
+        private bool VerifyPassword(string password, string hash)=>
+             BCrypt.Net.BCrypt.Verify(password, hash);
     }
 
 }

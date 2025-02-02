@@ -4,6 +4,7 @@ using ParkingSystem.Data;
 using ParkingSystem.DTOs;
 using ParkingSystem.Enums;
 using ParkingSystem.Models;
+using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using static ParkingSystem.DTOs.PaymentDtos;
 using static ParkingSystem.DTOs.ReservationDtos;
@@ -293,32 +294,27 @@ namespace ParkingSystem.Services
                 exitTime);
         }
 
-        public async Task<IEnumerable<ReservationDto>> GetUserReservationsAsync(int userId)
-        {
-            var reservations = await _context.Reservations
+        public async Task<IEnumerable<ReservationDto>> GetUserReservationsAsync(int userId) =>
+        
+             _mapper.Map < IEnumerable < ReservationDto >>( await _context.Reservations
                 .Include(r => r.Car)
                 .Include(r => r.ParkingSpot)
                 .Where(r => r.UserId == userId)
                 .OrderByDescending(r => r.EntryTime)
-                .ToListAsync();
+                .ToListAsync());
 
-            return _mapper.Map<IEnumerable<ReservationDto>>(reservations);
-        }
+        
 
-        public async Task<ReservationDto> GetActiveReservation(int carId)
-        {
-            var reservation = await _context.Reservations
-                .Include(r => r.ParkingSpot)
-                    .ThenInclude(ps => ps.ParkingZone)
-                .Include(r => r.Car)
-                .FirstOrDefaultAsync(r => r.CarId == carId
-                                     && r.Status == SessionStatus.Active);
+        public async Task<ReservationDto> GetActiveReservation(int carId) =>
+            _mapper.Map<ReservationDto>(await _context.Reservations
+                 .Include(r => r.ParkingSpot)
+                     .ThenInclude(ps => ps.ParkingZone)
+                 .Include(r => r.Car)
+                 .FirstOrDefaultAsync(r => r.CarId == carId
+                                      && r.Status == SessionStatus.Active))
+                ?? throw new KeyNotFoundException("No active reservation found for this car");
 
-            if (reservation == null)
-                throw new KeyNotFoundException("No active reservation found for this car");
-
-            return _mapper.Map<ReservationDto>(reservation);
-        }
+        
 
         public async Task<bool> HasActiveReservation(int carId) =>
              await _context.Reservations
@@ -328,8 +324,7 @@ namespace ParkingSystem.Services
          _mapper.Map<ReservationDto>(await _context.Reservations
              .Include(r => r.Car)
              .Include(r => r.ParkingSpot)
-             .FirstOrDefaultAsync(r => r.Id == reservationId)
-             );
+             .FirstOrDefaultAsync(r => r.Id == reservationId) ?? throw new InvalidOperationException("Not found!"));
 
 
 
@@ -351,14 +346,9 @@ namespace ParkingSystem.Services
             else
                 return 0; //non paid reservation with no charges
         }
-        private bool WithinCnxDuration(Reservation reservation)
-        {
-            var timeSinceCreation = DateTime.UtcNow - reservation.CreatedAt;
-            if (timeSinceCreation.TotalMinutes <= 15)
-                return true;
-            return false;
-
-        }
+        private bool WithinCnxDuration(Reservation reservation) =>
+             (DateTime.UtcNow - reservation.CreatedAt).TotalMinutes <= 15;
+        
 
 
 

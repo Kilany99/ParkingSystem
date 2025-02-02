@@ -67,27 +67,20 @@ namespace ParkingSystem.Services
 
         }
 
-        public async Task<PaymentDto> GetPaymentDetailsAsync(int paymentId)
-        {
-            var payment = await _context.Payments
-                .FirstOrDefaultAsync(p => p.Id == paymentId);
+        public async Task<PaymentDto> GetPaymentDetailsAsync(int paymentId) =>
+            _mapper.Map<PaymentDto>(await _context.Payments
+                .FirstOrDefaultAsync(p => p.Id == paymentId)??
+                    throw new KeyNotFoundException("Payment not found"));
 
-            if (payment == null)
-                throw new KeyNotFoundException("Payment not found");
 
-            return _mapper.Map<PaymentDto>(payment);
-        }
-
-        public async Task<IEnumerable<PaymentDto>> GetUserPaymentsAsync(int userId)
-        {
-            var payments = await _context.Payments
+        public async Task<IEnumerable<PaymentDto>> GetUserPaymentsAsync(int userId) =>
+             _mapper.Map<IEnumerable<PaymentDto>>(await _context.Payments
                 .Include(p => p.Reservation)
                 .Where(p => p.Reservation.UserId == userId)
                 .OrderByDescending(p => p.CreatedAt)
-                .ToListAsync();
+                .ToListAsync());
 
-            return _mapper.Map<IEnumerable<PaymentDto>>(payments);
-        }
+        
     }
 
 }

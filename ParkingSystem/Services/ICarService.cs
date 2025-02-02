@@ -53,20 +53,14 @@ namespace ParkingSystem.Services
             return _mapper.Map<CarDto>(car);
         }
 
-        public async Task<IEnumerable<CarDto>> GetUserCarsAsync(int userId)
-        {
-            var cars = await _context.Cars
+        public async Task<IEnumerable<CarDto>> GetUserCarsAsync(int userId) =>
+            _mapper.Map<IEnumerable<CarDto>>(await _context.Cars
                 .Where(c => c.UserId == userId)
-                .ToListAsync();
+                .ToListAsync());
 
-            return _mapper.Map<IEnumerable<CarDto>>(cars);
-        }
-        public async Task<IEnumerable<CarDto>> getAllCarsAsync()
-        {
-            var cars = await _context.Cars
-                .ToListAsync();
-            return _mapper.Map<IEnumerable<CarDto>>(cars);
-        }
+        public async Task<IEnumerable<CarDto>> getAllCarsAsync() =>
+                _mapper.Map<IEnumerable<CarDto>>(await _context.Cars
+                .ToListAsync());
 
         public async Task<CarDto> UpdateCarAsync(int userId, int carId, UpdateCarDto dto)
         {
