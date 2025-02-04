@@ -16,12 +16,13 @@ namespace ParkingSystem.Controllers
     public class ReservationController : ControllerBase
     {
         private readonly IReservationService _reservationService;
-        private readonly ILogger<ReservationController> _logger;   
-
-        public ReservationController(IReservationService reservationService,ILogger<ReservationController> logger)
+        private readonly ILogger<ReservationController> _logger;
+        public ReservationController(IReservationService reservationService,
+            ILogger<ReservationController> logger,
+            IQRCodeService qrCodeService)
         {
             _reservationService = reservationService;
-            _logger= logger;
+            _logger = logger;
         }
         [CustomRateLimit("1m", 10)]
         [HttpPost]
@@ -124,6 +125,14 @@ namespace ParkingSystem.Controllers
             var fee = await _reservationService.CalculateParkingFeeAsync(id);
             return Ok(fee);
         }
+
+
+        [HttpGet("{id}/cnx-fee")]
+        public async Task<ActionResult<decimal>> CalculateCancelFee(int id)
+        {
+            var fee = await _reservationService.CalculateCnxFeeAsync(id);
+            return Ok(fee);
+        }
         [HttpPost("{id}/cancel")]
         public async Task<ActionResult<ReservationDto>> CancelReservation(int id)
         {
@@ -144,7 +153,7 @@ namespace ParkingSystem.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error cancelling reservation {ReservationId}", id);
-                return StatusCode(500, "An error occurred while cancelling the reservation");
+                return StatusCode(500, "An error occurred while cancelling the reservation"+ex.Message);
             }
         }
 
@@ -161,19 +170,6 @@ namespace ParkingSystem.Controllers
             return Ok(activity);
 
         }
-        /*    [HttpGet("car/{carId}/active")]
-            public async Task<ActionResult<ReservationDto>> GetActiveReservation(int carId)
-            {
-                try
-                {
-                    var reservation = await _reservationService.GetActiveReservation(carId);
-                    return Ok(reservation);
-                }
-                catch (KeyNotFoundException)
-                {
-                    return NotFound("No active reservation found for this car");
-                }
-            }
-        */
+
     }
 }

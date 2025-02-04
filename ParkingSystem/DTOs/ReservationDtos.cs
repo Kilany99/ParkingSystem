@@ -20,7 +20,7 @@ namespace ParkingSystem.DTOs
             public SessionStatus Status { get; set; }
             public CarDto? Car { get; set; }
             [JsonIgnore]
-            public ParkingSpotDto? ParkingSpot { get; set; }
+            public ParkingSpotDto ParkingSpot { get; set; }
             public ParkingZoneDto? ParkingZone { get; set; }
 
             public ReservationDto() { }

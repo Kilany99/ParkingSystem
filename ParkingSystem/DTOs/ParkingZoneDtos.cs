@@ -36,7 +36,7 @@ namespace ParkingSystem.DTOs
              int Floor ,
              SpotStatus Status,
              SpotType Type,
-             ReservationDto? CurrentReservation,
+             ReservationDto CurrentReservation,
              ParkingZoneDto ParkingZone);
 
     }

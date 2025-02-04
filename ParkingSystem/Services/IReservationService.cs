@@ -21,6 +21,7 @@ namespace ParkingSystem.Services
         Task<IEnumerable<ReservationDto>> GetUserReservationsAsync(int userId);
         Task<decimal> CalculateParkingFeeAsync(int reservationId);
         public Task<ReservationDto> GetActiveReservation(int carId);
+        Task<decimal> CalculateCnxFeeAsync(int reservationId);
         Task<bool> HasActiveReservation(int carId);
         Task<decimal> GetTodayRevenueAsync();
         Task<object> GetTodayActivity();
@@ -326,7 +327,7 @@ namespace ParkingSystem.Services
 
             return _mapper.Map<ReservationDto>(reservation);
         }
-
+     
         public async Task<bool> HasActiveReservation(int carId) =>
              await _context.Reservations
                 .AnyAsync(r => r.CarId == carId && (r.Status == SessionStatus.Active||r.Status == SessionStatus.Reserved));
@@ -380,24 +381,29 @@ namespace ParkingSystem.Services
         }
 
 
-
+        public async Task<decimal> CalculateCnxFeeAsync(int reservationId)
+        {
+            var reservation = await _context.Reservations
+                            .Include(r => r.ParkingSpot)
+                            .ThenInclude(ps => ps.ParkingZone)
+                            .FirstOrDefaultAsync(r => r.Id == reservationId)
+                            ?? throw new KeyNotFoundException("Reservation not found!");
+            return CalculateCancellationFee(reservation);
+        }
         private decimal CalculateCancellationFee(Reservation reservation)
         {
             // - If cancelled within 15 minutes of creation: no fee
             // - If cancelled after 15 minutes: 1/5 per hour of parking fee for online paid reservations
             if (reservation.ParkingSpot == null || reservation.ParkingSpot.ParkingZone == null)
                 throw new InvalidOperationException("Cannot get fee for this reservation");
-            if (reservation.IsPaid)
-            {
-                if (WithinCnxDuration(reservation))
-                    return 0;
+          
+            if (WithinCnxDuration(reservation))
+                return 0;
 
-                // Charge 1/5 of parking fee
-                var duration = (DateTime.UtcNow - reservation.CreatedAt).Hours;
-                return (decimal)0.2 * reservation.ParkingSpot.ParkingZone.HourlyRate * duration;
-            }
-            else
-                return 0; //non paid reservation with no charges
+            // Charge 1/5 of parking fee
+            var duration = (DateTime.UtcNow - reservation.CreatedAt).Hours;
+            return (decimal)0.2 * (reservation.ParkingSpot.ParkingZone.HourlyRate) * duration;
+           
         }
 
         private bool WithinCnxDuration(Reservation reservation)
