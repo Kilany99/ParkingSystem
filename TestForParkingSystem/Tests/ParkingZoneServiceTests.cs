@@ -63,7 +63,8 @@ namespace TestForParkingSystem.Tests
             var spot = new ParkingSpot
             {
                 ParkingZoneId = zone.Id,
-                Status = SpotStatus.Occupied
+                Status = SpotStatus.Occupied,
+                ParkingZone = zone,
             };
 
             _context.ParkingZones.Add(zone);

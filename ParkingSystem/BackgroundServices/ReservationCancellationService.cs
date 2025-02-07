@@ -28,17 +28,18 @@ namespace ParkingSystem.BackgroundServices
 
                         // Find reservations that are still reserved and older than 24 hours.
                         var expiredReservations = await dbContext.Reservations
-                            .Include(r => r.ParkingSpot)
-                            .Where(r => r.Status == SessionStatus.Reserved && DateTime.UtcNow - r.CreatedAt > TimeSpan.FromHours(24))
-                            .ToListAsync(stoppingToken);
+                        .Include(r => r.ParkingSpot)
+                        .Where(r => r.Status == SessionStatus.Reserved &&
+                                    EF.Functions.DateDiffHour(r.CreatedAt, DateTime.UtcNow) > 24)  // fully database-optimized.
+                        .ToListAsync(stoppingToken);
 
                         if (expiredReservations.Any())
                         {
                             foreach (var reservation in expiredReservations)
                             {
                                 // Cancel the reservation.
-                                reservation.Status = SessionStatus.Cancelled; 
-
+                                reservation.Status = SessionStatus.Cancelled;
+                                reservation.IsPaid = false;
                                 // Release the parking spot.
                                 if (reservation.ParkingSpot != null)
                                 {

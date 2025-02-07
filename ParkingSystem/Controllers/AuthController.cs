@@ -13,7 +13,7 @@ namespace ParkingSystem.Controllers
     {
         private readonly IAuthService _authService;
        
-        public AuthController(IAuthService authService, AppDbContext appDbContext,EmailService emailService) 
+        public AuthController(IAuthService authService, AppDbContext appDbContext,IEmailService emailService) 
         {
             _authService = authService;
             

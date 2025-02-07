@@ -21,13 +21,13 @@ namespace ParkingSystem.Services
     public class AuthService : IAuthService
     {
         private readonly AppDbContext _context;
-        private readonly EmailService _emailService;
+        private readonly IEmailService _emailService;
         private readonly IConfiguration _configuration;
 
         public AuthService(
             AppDbContext context,
             IConfiguration configuration, AppDbContext appDbContext,
-            EmailService emailService)
+            IEmailService emailService)
         {
             _context = context;
             _configuration = configuration;

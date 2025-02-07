@@ -9,7 +9,9 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using ParkingSystem.BackgroundServices;
 using ParkingSystem.Constants;
+using ParkingSystem.Consumers;
 using ParkingSystem.Data;
+using ParkingSystem.DTOs;
 using ParkingSystem.Handlers;
 using ParkingSystem.Helpers;
 using ParkingSystem.Services;
@@ -32,7 +34,15 @@ builder.Services.AddScoped<IParkingZoneService, ParkingZoneService>();
 builder.Services.AddScoped<IReservationService, ReservationService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<IQRCodeService, QRCodeService>();
-builder.Services.AddScoped<EmailService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<QRGenerationHelper>();
+
+
+builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
+builder.Services.AddTransient<EmailService>();
+
+builder.Services.AddSingleton<RabbitMQPublisherService>();
+builder.Services.AddHostedService<ReservationCreatedConsumer>();
 builder.Services.AddHostedService<ReservationCancellationService>();
 
 builder.Services.AddDbContext<AppDbContext>();
@@ -197,7 +207,7 @@ app.UseCors("AllowAngularApp");
 
 app.UseIpRateLimiting();
 
-//app.UseHttpsRedirection();
+app.UseHttpsRedirection();
 
 app.UseAuthentication();
 

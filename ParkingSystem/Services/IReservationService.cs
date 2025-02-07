@@ -34,10 +34,12 @@ namespace ParkingSystem.Services
         private readonly IParkingZoneService _parkingZoneService;
         private readonly ILogger<ReservationService> _logger;
         private readonly IPaymentService _paymentService;
+        private readonly RabbitMQPublisherService _rabbitMQPublisherService;
         private readonly Regex _plateRegex = new(@"^[A-Z]{3}\d{4}$", RegexOptions.Compiled);
 
         public ReservationService(AppDbContext context, IMapper mapper, IQRCodeService qrCodeService,
-            IParkingZoneService parkingZoneService, ILogger<ReservationService> logger, IPaymentService paymentService)
+            IParkingZoneService parkingZoneService, ILogger<ReservationService> logger, IPaymentService paymentService,
+            RabbitMQPublisherService rabbitMQPublisherService)
         {
             _context = context;
             _mapper = mapper;
@@ -45,10 +47,14 @@ namespace ParkingSystem.Services
             _parkingZoneService = parkingZoneService;
             _logger = logger;
             _paymentService = paymentService;
+            _rabbitMQPublisherService = rabbitMQPublisherService;
         }
 
         public async Task<ReservationDto> CreateReservationAsync(int userId, CreateReservationDto dto)
         {
+            var user = _context.Users.FirstOrDefaultAsync(u => u.Id == userId).Result
+                ?? throw new KeyNotFoundException("User not found!!");
+
             // Check if car has active reservations
             var hasActiveReservation = await _context.Reservations
             .AnyAsync(r => r.CarId == dto.CarId
@@ -103,8 +109,18 @@ namespace ParkingSystem.Services
             // Update spot status
             spot.Status = SpotStatus.Reserved;
             spot.ReservationId = reservation.Id;
-
             await _context.SaveChangesAsync();
+
+            var reservationEvent = new ReservationCreatedEvent
+            {
+                ReservationId = reservation.Id,
+                UserId = userId,
+                Email = user.Email,  // Retrieve user email
+                CreatedAt = reservation.CreatedAt,
+                QRCode = reservation.QRCode
+            };
+
+            _rabbitMQPublisherService.PublishReservationCreatedEvent(reservationEvent);
 
             return await GetReservationDtoAsync(reservation.Id);
         }
