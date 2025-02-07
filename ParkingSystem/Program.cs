@@ -186,13 +186,15 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
-}
+    app.UseDeveloperExceptionPage();
 
+}
 app.UseCors("AllowAngularApp");
+
 
 app.UseIpRateLimiting();
 
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection();
 
 app.UseAuthentication();
 

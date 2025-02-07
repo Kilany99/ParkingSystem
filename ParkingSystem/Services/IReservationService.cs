@@ -305,7 +305,7 @@ namespace ParkingSystem.Services
             var reservations = await _context.Reservations
                 .Include(r => r.Car)
                 .Include(r => r.ParkingSpot)
-                    .ThenInclude(ps => ps.ParkingZone) // Include ParkingZone through ParkingSpot
+                    .ThenInclude(ps => ps.ParkingZone) 
                 .Where(r => r.UserId == userId)
                 .OrderByDescending(r => r.EntryTime)
                 .ToListAsync();
