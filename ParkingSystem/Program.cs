@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using ParkingSystem.BackgroundServices;
 using ParkingSystem.Constants;
 using ParkingSystem.Data;
 using ParkingSystem.Handlers;
@@ -32,6 +33,8 @@ builder.Services.AddScoped<IReservationService, ReservationService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<IQRCodeService, QRCodeService>();
 builder.Services.AddScoped<EmailService>();
+builder.Services.AddHostedService<ReservationCancellationService>();
+
 builder.Services.AddDbContext<AppDbContext>();
 var mappingConfig = new MapperConfiguration(mc =>
 {

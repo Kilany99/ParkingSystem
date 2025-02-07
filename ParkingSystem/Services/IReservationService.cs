@@ -120,7 +120,7 @@ namespace ParkingSystem.Services
 
             var (reservationId, userId, timeStamp) = _qrCodeService.DecodeQRCode(request.QrCode);
         
-            // Check timestamp freshness (24 hour window) 
+            // Check timestamp freshness (24 hour window) to make sure that reservation is not expired
             if (DateTime.UtcNow - timeStamp > TimeSpan.FromHours(24))
                 throw new InvalidOperationException("Expired QR code");
 

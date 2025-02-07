@@ -22,7 +22,7 @@ namespace ParkingSystem.Data
         {
             if (!optionsBuilder.IsConfigured)
             {
-                optionsBuilder.UseSqlServer("Server=ASDGHALB\\SQLEXPRESS;Database=ParkingSystemDB;TrustServerCertificate=True;Integrated Security=True;");
+                optionsBuilder.UseSqlServer("Server=host.docker.internal,1433;Database=ParkingSystemDB;User Id=parking_user;Password=1999King;TrustServerCertificate=True;");
             }
         }
 
