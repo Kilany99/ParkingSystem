@@ -9,6 +9,7 @@ The **Parking Management System** is a full-stack application designed to stream
 - **Real-time Parking Availability**: Users can view available parking spaces in real-time.
 - **User Registration and Authentication**: Users can register, log in, and reset passwords through secure authentication mechanisms.
 - **Booking and Reservation**: Users can reserve parking spaces and view their reservation history.
+- **automatic cancellation for expired on-hold reservations**: periodically cancel reservations that have remained in the 'Reserved' state for more than 24 hours.
 - **Admin Panel**: Admins can manage parking spots, monitor reservations, and update parking space statuses.
 - **Payment Integration**: Payment options are provided for users to pay for their parking bookings.
 - **Mobile App Integration**: A mobile application built using Kotlin for a native Android experience, providing access to all features on the go.
