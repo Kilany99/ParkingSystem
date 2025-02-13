@@ -15,6 +15,7 @@ namespace ParkingSystem.Services
         Task<ParkingZoneStatusDto> GetZoneStatusAsync(int zoneId);
         Task<IEnumerable<ParkingSpotDto>> GetSpotsAsync(int zoneId, SpotStatus status);
         Task<IEnumerable<ParkingSpotDto>> GetAllSpotsAsync(int zoneId);
+        Task<IEnumerable<Car>> GetCarsInZoneAsync(int zoneId);
         Task<decimal> CalculateParkingFee(int zoneId, DateTime entryTime, DateTime exitTime);
         Task<bool> IsZoneFull(int zoneId);
     }
@@ -119,14 +120,23 @@ namespace ParkingSystem.Services
             var spotsWithReservations = await _context.ParkingSpots
                 .Where(s => s.ParkingZoneId == zoneId && s.Status == status)
                 .Include(s => s.CurrentReservation) // Eager load the Reservation related to the Spot
-                .ThenInclude(r => r.Car) // Optional: Eager load the Car data (if needed)
-                .Include(s => s.ParkingZone) // Eager load ParkingZone if needed
+                .ThenInclude(r => r.Car) // Optional: Eager load the Car data 
+                .Include(s => s.ParkingZone) // Eager load ParkingZone 
                 .ToListAsync();
 
             // Map the fetched data to ParkingSpotDto, including the reservation details
             return _mapper.Map<IEnumerable<ParkingSpotDto>>(spotsWithReservations);
         }
 
+        public async Task<IEnumerable<Car>> GetCarsInZoneAsync(int zoneId)
+        {
+            var cars = await _context.Cars
+                .Where(c => c.ParkingZoneId == zoneId && c.Reservations.Any(r => r.Status == SessionStatus.Active))
+                .Include(c => c.Reservations.Where(r => r.Status == SessionStatus.Active))
+                .ToListAsync();
+
+            return cars;
+        }
 
 
         public async Task<bool> IsZoneFull(int zoneId)

@@ -14,7 +14,7 @@
             string Token,
             string Email,
             string Name,
-            string Rol);    
+            string Role);    
 
         public record ForgotPasswordDto
             (

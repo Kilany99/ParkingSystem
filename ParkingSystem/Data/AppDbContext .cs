@@ -37,8 +37,14 @@ namespace ParkingSystem.Data
 
             // Car configurations
             modelBuilder.Entity<Car>()
-                .HasIndex(c => c.PlateNumber)
-                .IsUnique();
+                .HasOne(c => c.ParkingZone)
+                .WithMany(pz => pz.Cars)
+                .HasForeignKey(c => c.ParkingZoneId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Car>()
+               .HasIndex(c => c.PlateNumber)
+               .IsUnique();
 
             // ParkingSpot configurations
             modelBuilder.Entity<ParkingSpot>()
@@ -46,6 +52,7 @@ namespace ParkingSystem.Data
                 .WithMany(pz => pz.ParkingSpots)
                 .HasForeignKey(ps => ps.ParkingZoneId)
                 .OnDelete(DeleteBehavior.Restrict);
+
 
             // Reservation configurations
             modelBuilder.Entity<Reservation>()
@@ -56,7 +63,7 @@ namespace ParkingSystem.Data
 
             modelBuilder.Entity<Reservation>()
                 .HasOne(r => r.Car)
-                .WithMany(c => c.ParkingSessions)
+                .WithMany(c => c.Reservations)
                 .HasForeignKey(r => r.CarId)
                 .OnDelete(DeleteBehavior.Restrict);
 

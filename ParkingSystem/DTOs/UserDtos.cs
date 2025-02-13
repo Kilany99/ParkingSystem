@@ -12,7 +12,8 @@
 
         public record UpdateUserDto(
             string Name,
-            string Phone);
+            string Phone,
+            string Role);
 
         public record CreateUserDto(
         

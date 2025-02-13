@@ -33,7 +33,7 @@ public class UserController : ControllerBase
 
 
     [HttpPost("create")]
-     [Authorize(Policy ="AdminOnly")]
+    [Authorize(Policy ="Admin")]
     public async Task<ActionResult<UserDto>> CreateUser(CreateUserDto dto)
     {
         try
@@ -49,7 +49,7 @@ public class UserController : ControllerBase
     }
 
 
-    [Authorize(Policy = "AdminOnly")]
+    [Authorize(Policy = "Admin")]
     [HttpGet("getall")]
     public async Task<ActionResult<IEnumerable<UserDto>>> GetAll()
     {
@@ -57,7 +57,7 @@ public class UserController : ControllerBase
         return Ok(users);
     }
 
-   // [Authorize(Policy = "AdminOnly")]
+    [Authorize(Policy = "Admin")]
     [HttpGet("{id}")]
     public async Task<ActionResult<UserDto>> GetById(int id)
     {
@@ -71,7 +71,7 @@ public class UserController : ControllerBase
             return NotFound(ex.Message);
         }
     }
-
+    [Authorize(Policy ="Admin")]
     [HttpPut("{id}")]
     public async Task<ActionResult<UserDto>> Update(int id, UpdateUserDto dto)
     {
@@ -108,7 +108,7 @@ public class UserController : ControllerBase
         }
     }
 
-   // [Authorize(Policy = "AdminOnly")]
+    [Authorize(Policy = "Admin")]
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(int id)
     {

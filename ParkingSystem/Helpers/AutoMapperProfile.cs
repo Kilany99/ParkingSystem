@@ -13,9 +13,16 @@ namespace ParkingSystem.Helpers
     {
         public AutoMapperProfile()
         {
+            // Map from User to UserDto
             CreateMap<User, UserDto>();
+
+            // Map from UpdateUserDto to User
             CreateMap<UpdateUserDto, User>()
                 .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null));
+
+            CreateMap<CreateUserDto, User>()
+                .ForMember(dest => dest.PasswordHash, opt => opt.MapFrom(src => HashPassword(src.Password)))
+                .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => DateTime.UtcNow)); // Set the CreatedAt to current time
 
             CreateMap<Car, CarDto>();
             CreateMap<CreateCarDto, Car>();
@@ -32,5 +39,8 @@ namespace ParkingSystem.Helpers
             CreateMap<Payment, PaymentDto>();
 
         }
+        private string HashPassword(string password) =>
+           BCrypt.Net.BCrypt.HashPassword(password);
+
     }
 }

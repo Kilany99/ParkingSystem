@@ -1,6 +1,9 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using ParkingSystem.Data;
+using ParkingSystem.DTOs.Events;
 using ParkingSystem.Enums;
+using ParkingSystem.Models;
+using ParkingSystem.Publishers;
 
 namespace ParkingSystem.BackgroundServices
 {
@@ -25,13 +28,14 @@ namespace ParkingSystem.BackgroundServices
                     using (var scope = _scopeFactory.CreateScope())
                     {
                         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-
+                        var rabbitMQPublisherService = scope.ServiceProvider.GetRequiredService<RabbitMQPublisherService>();
                         // Find reservations that are still reserved and older than 24 hours.
                         var expiredReservations = await dbContext.Reservations
-                        .Include(r => r.ParkingSpot)
-                        .Where(r => r.Status == SessionStatus.Reserved &&
-                                    EF.Functions.DateDiffHour(r.CreatedAt, DateTime.UtcNow) > 24)  // fully database-optimized.
-                        .ToListAsync(stoppingToken);
+                           .Include(r => r.ParkingSpot)
+                           .Include(r => r.User) // user info is loaded
+                           .Where(r => r.Status == SessionStatus.Reserved &&
+                                       EF.Functions.DateDiffHour(r.CreatedAt, DateTime.UtcNow) >= 24)
+                           .ToListAsync(stoppingToken);
 
                         if (expiredReservations.Any())
                         {
@@ -46,6 +50,16 @@ namespace ParkingSystem.BackgroundServices
                                     reservation.ParkingSpot.Status = SpotStatus.Available;
                                     reservation.ParkingSpot.ReservationId = null;
                                 }
+                                var reservationEvent = new ReservationCancelledEvent
+                                {
+                                    ReservationId = reservation.Id,
+                                    Email = reservation.User.Email,  // Retrieve user email
+                                    CancelledAt = DateTime.UtcNow,
+                                    ParkingZoneName = reservation.ParkingSpot?.ParkingZone.Name??""
+                                };
+
+                                rabbitMQPublisherService.PublishReservationCanceledEvent(reservationEvent);
+
                             }
 
                             await dbContext.SaveChangesAsync(stoppingToken);

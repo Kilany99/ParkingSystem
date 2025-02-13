@@ -24,6 +24,7 @@ namespace ParkingSystem.Controllers
             _reservationService = reservationService;
             _logger = logger;
         }
+        [Authorize(Roles = "User")]
         [CustomRateLimit("1m", 10)]
         [HttpPost]
         public async Task<ActionResult<ReservationDto>> CreateReservation(CreateReservationDto dto)
@@ -54,7 +55,7 @@ namespace ParkingSystem.Controllers
                 return StatusCode(500, "An error occurred while creating the reservation");
             }
         }
-
+        [Authorize(Roles = "Admin")]
         [HttpPost("start")]  //Called from parking zone with QR code reader and plate number reader on the entrence of the parking.
         public async Task<ActionResult<ReservationDto>> StartParking([FromBody] ParkingRequest request)
         {
@@ -79,7 +80,7 @@ namespace ParkingSystem.Controllers
 
             }
         }
-
+        [Authorize(Roles = "Admin")]
         [HttpPost("end")] //Called from parking zone with QR code reader and plate number reader on the exit of the parking.
         public async Task<ActionResult<ReservationDto>> EndParking([FromBody] ParkingRequest request, PaymentMethod method)
         {
@@ -110,7 +111,7 @@ namespace ParkingSystem.Controllers
 
             }
         }
-
+        [Authorize(Roles = "User")]
         [HttpGet("me")]
         public async Task<ActionResult<IEnumerable<ReservationDto>>> GetMyReservations()
         {
@@ -118,7 +119,7 @@ namespace ParkingSystem.Controllers
             var reservations = await _reservationService.GetUserReservationsAsync(userId);
             return Ok(reservations);
         }
-
+        [Authorize(Roles = "User")]
         [HttpGet("{id}/fee")]
         public async Task<ActionResult<decimal>> CalculateFee(int id)
         {
@@ -126,13 +127,14 @@ namespace ParkingSystem.Controllers
             return Ok(fee);
         }
 
-
+        [Authorize(Roles = "User")]
         [HttpGet("{id}/cnx-fee")]
         public async Task<ActionResult<decimal>> CalculateCancelFee(int id)
         {
             var fee = await _reservationService.CalculateCnxFeeAsync(id);
             return Ok(fee);
         }
+        [Authorize(Roles = "User")]
         [HttpPost("{id}/cancel")]
         public async Task<ActionResult<ReservationDto>> CancelReservation(int id)
         {
@@ -157,17 +159,73 @@ namespace ParkingSystem.Controllers
             }
         }
 
+        [HttpGet("get-qr-image")]
+        public async Task<IActionResult> GetQRImage(string qrCode)
+        {
+            if (string.IsNullOrEmpty(qrCode))
+            {
+                return BadRequest("Invalid QR code.");
+            }
+            try
+            {
+                byte[] qrImage = _reservationService.GetQRImage(qrCode);
+                string base64Image = Convert.ToBase64String(qrImage);
+                return Ok(new { qrCode = $"data:image/png;base64,{base64Image}" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Error generating QR code: {ex.Message}");
+            }
+           
+
+        }
+        [Authorize(Roles = "Admin")]
         [HttpGet("today-revenue")]
         public async Task<IActionResult> GetTodayRevenue()
         {
             var revenue = await _reservationService.GetTodayRevenueAsync();
             return Ok(new { todayRevenue = revenue });
         }
+        [Authorize(Roles = "Admin")]
         [HttpGet("today-activity")]
         public async Task<IActionResult> GetTodayActivity()
         {
             var activity = await _reservationService.GetTodayActivity();
             return Ok(activity);
+
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpGet("get-all")]
+        public async Task<ActionResult<IEnumerable<ReservationDto>>> GetAllReservations()
+        {
+            try
+            {
+                var reservations = await _reservationService.GetAllReservationsAsync();
+                return Ok(reservations);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("an error occured while trying to get reservations " + ex.Message);
+                return StatusCode(500,"an error occured while trying to get reservations" + ex.Message);
+            }
+
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpGet("get-all-in-parkingzone")]
+        public async Task<ActionResult<IEnumerable<ReservationDto>>> GetAllReservations(int parkingZoneId)
+        {
+            try
+            {
+                var reservations = await _reservationService.GetReservationsInParkingZoneAsync(parkingZoneId);
+                return Ok(reservations);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("an error occured while trying to get reservations " + ex.Message);
+                return StatusCode(500, "an error occured while trying to get reservations" + ex.Message);
+            }
 
         }
 

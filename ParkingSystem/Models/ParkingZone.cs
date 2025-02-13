@@ -28,8 +28,9 @@ namespace ParkingSystem.Models
         public bool IsFull { get; set; } = false;
 
 
-        // Navigation property
+        // Navigation properties
         public virtual ICollection<ParkingSpot> ParkingSpots { get; set; } = new List<ParkingSpot>();
+        public virtual ICollection<Car> Cars { get; set; } = new List<Car>();
 
     }
 }

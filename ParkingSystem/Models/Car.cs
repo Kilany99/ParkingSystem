@@ -14,6 +14,9 @@ namespace ParkingSystem.Models
         [Required]
         [RegularExpression(@"^[A-Z]{3}\d{4}$", ErrorMessage = "Invalid plate format")]   //validation that plateNumber is in the correct form "XXX1234"
         public string PlateNumber { get; set; } = string.Empty;
+        public int? ParkingZoneId { get; set; }
+        public int ReservationId { get; set; }
+
 
         [Required]
         [StringLength(50)]
@@ -26,7 +29,8 @@ namespace ParkingSystem.Models
 
         // Navigation properties
         public virtual User User { get; set; }
-        [JsonIgnore]
-        public virtual ICollection<Reservation> ParkingSessions { get; set; } = new List<Reservation>();
+        public virtual ParkingZone ParkingZone { get; set; } 
+
+        public virtual ICollection<Reservation> Reservations { get; set; } = new List<Reservation>();
     }
 }

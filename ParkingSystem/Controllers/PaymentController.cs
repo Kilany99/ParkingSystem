@@ -19,6 +19,7 @@ namespace ParkingSystem.Controllers
             _paymentService = paymentService;
         }
 
+        [Authorize(Roles = "User")]
         [HttpPost]
         public async Task<ActionResult<PaymentDto>> ProcessPayment(ProcessPaymentDto dto)
         {
@@ -32,7 +33,7 @@ namespace ParkingSystem.Controllers
             var payment = await _paymentService.GetPaymentDetailsAsync(id);
             return Ok(payment);
         }
-
+        [Authorize(Roles = "User")]
         [HttpGet("my-payments")]
         public async Task<ActionResult<IEnumerable<PaymentDto>>> GetMyPayments()
         {

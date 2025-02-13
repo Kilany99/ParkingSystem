@@ -16,7 +16,7 @@ namespace ParkingSystem.Services
     {
         Task SendEmailAsync(string email, string subject, string message);
         Task SendPasswordResetEmail(string email, string resetToken);
-        Task SendNotificationEmailAsync(string recipientEmail, string subject, string htmlBody, string qrCode);
+        Task SendNotificationEmailAsync(string recipientEmail, string subject, string htmlBody, string? qrCode = null, Dictionary<string, byte[]>? attachments = null);
     }
     public class EmailService : IEmailService
     {
@@ -32,53 +32,65 @@ namespace ParkingSystem.Services
             _qrGenerationHelper = qrGenerationHelper;
             _logger = logger;
         }
-        public async Task SendNotificationEmailAsync(string recipientEmail, string subject,string htmlBody, string qrCode)
+        public async Task SendNotificationEmailAsync(
+         string recipientEmail,
+         string subject,
+         string htmlBody,
+         string? qrCode = null,
+         Dictionary<string, byte[]>? attachments = null)
         {
-            // Create the email message.
-            var message = new MimeMessage();
-            message.From.Add(new MailboxAddress("Parking System", _emailSettings.GmailUser));
-            message.To.Add(new MailboxAddress("", recipientEmail));
-            message.Subject = subject;
-
-            // Build the email body.
-            var builder = new BodyBuilder { HtmlBody = htmlBody };
-
-            if (qrCode != null)
+            try
             {
-                try
+                var message = new MimeMessage();
+                message.From.Add(new MailboxAddress("Parking System", _emailSettings.GmailUser));
+                message.To.Add(new MailboxAddress("", recipientEmail));
+                message.Subject = subject;
+
+                var builder = new BodyBuilder { HtmlBody = htmlBody };
+
+                // Attach QR Code if provided
+                if (!string.IsNullOrEmpty(qrCode))
                 {
-                    byte[] qrImageBytes = _qrGenerationHelper.GenerateQRCodeImageBytes(qrCode);
-                    // "QRCode.png" is the attachment filename.
-                    builder.Attachments.Add("QRCode.png", qrImageBytes, new ContentType("image", "png"));
+                    try
+                    {
+                        byte[] qrImageBytes = _qrGenerationHelper.GenerateQRCodeImageBytes(qrCode);
+                        builder.Attachments.Add("QRCode.png", qrImageBytes, new ContentType("image", "png"));
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError($"QR Code generation failed: {ex.Message}");
+                    }
                 }
-                catch (Exception ex)
+
+                // Attach additional files
+                if (attachments != null)
                 {
-                    _logger.LogInformation("An error occured during generating QR image" + ex.Message);
-                    throw;
+                    foreach (var attachment in attachments)
+                    {
+                        builder.Attachments.Add(attachment.Key, attachment.Value);
+                    }
                 }
+
+                message.Body = builder.ToMessageBody();
+
+                // Send email using MailKit
+                using (var client = new MailKit.Net.Smtp.SmtpClient())
+                {
+                    client.ServerCertificateValidationCallback = (s, c, h, e) => true;
+                    await client.ConnectAsync("smtp.gmail.com", 587, SecureSocketOptions.StartTls);
+                    await client.AuthenticateAsync(_emailSettings.GmailUser, _emailSettings.GmailAppPassword);
+                    await client.SendAsync(message);
+                    await client.DisconnectAsync(true);
+                }
+
+                _logger.LogInformation($"Email sent successfully to {recipientEmail}");
             }
-            message.Body = builder.ToMessageBody();
-
-            // Send the email using MailKit's SmtpClient.
-            using (var client = new MailKit.Net.Smtp.SmtpClient())
+            catch (Exception ex)
             {
-                // Accept all SSL certificates (for demo purposes only)
-                client.ServerCertificateValidationCallback = (s, c, h, e) => true;
-
-                // Connect to Gmail SMTP using STARTTLS on port 587.
-                await client.ConnectAsync("smtp.gmail.com", 587, SecureSocketOptions.StartTls);
-
-                // Authenticate with your Gmail credentials.
-                await client.AuthenticateAsync(_emailSettings.GmailUser, _emailSettings.GmailAppPassword);
-
-                // Send the email.
-                await client.SendAsync(message);
-
-                // Disconnect gracefully.
-                await client.DisconnectAsync(true);
+                _logger.LogError($"Failed to send email: {ex.Message}");
+                throw;
             }
         }
-
         public async Task SendEmailAsync(string email, string subject, string message)
         {
             var smtpClient = new System.Net.Mail.SmtpClient(_configuration["Smtp:Host"])

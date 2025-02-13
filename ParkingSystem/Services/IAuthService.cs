@@ -1,8 +1,10 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using ParkingSystem.Data;
 using ParkingSystem.Models;
+using ParkingSystem.Settings;
 using System;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -24,21 +26,22 @@ namespace ParkingSystem.Services
         private readonly IEmailService _emailService;
         private readonly IConfiguration _configuration;
 
+
         public AuthService(
             AppDbContext context,
-            IConfiguration configuration, AppDbContext appDbContext,
-            IEmailService emailService)
+            IEmailService emailService,
+            IConfiguration configuration)
         {
             _context = context;
-            _configuration = configuration;
-            _context = appDbContext;
             _emailService = emailService;
+            _configuration = configuration;
         }
 
         public async Task<AuthResponseDto> LoginAsync(LoginDto model)
         {
             var user = await _context.Users
-                .FirstOrDefaultAsync(u => u.Email == model.Email);
+                .FirstOrDefaultAsync(u => u.Email.ToLower() == model.Email.ToLower());
+
 
             if (user == null || !VerifyPassword(model.Password, user.PasswordHash))
             {

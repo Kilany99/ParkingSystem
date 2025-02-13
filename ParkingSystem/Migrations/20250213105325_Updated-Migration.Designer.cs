@@ -12,8 +12,8 @@ using ParkingSystem.Data;
 namespace ParkingSystem.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20250128071027_NewMigration")]
-    partial class NewMigration
+    [Migration("20250213105325_Updated-Migration")]
+    partial class UpdatedMigration
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -46,14 +46,22 @@ namespace ParkingSystem.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<int?>("ParkingZoneId")
+                        .HasColumnType("int");
+
                     b.Property<string>("PlateNumber")
                         .IsRequired()
                         .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("ReservationId")
+                        .HasColumnType("int");
 
                     b.Property<int>("UserId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ParkingZoneId");
 
                     b.HasIndex("PlateNumber")
                         .IsUnique();
@@ -271,11 +279,18 @@ namespace ParkingSystem.Migrations
 
             modelBuilder.Entity("ParkingSystem.Models.Car", b =>
                 {
+                    b.HasOne("ParkingSystem.Models.ParkingZone", "ParkingZone")
+                        .WithMany("Cars")
+                        .HasForeignKey("ParkingZoneId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
                     b.HasOne("ParkingSystem.Models.User", "User")
                         .WithMany("Cars")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("ParkingZone");
 
                     b.Navigation("User");
                 });
@@ -311,7 +326,7 @@ namespace ParkingSystem.Migrations
             modelBuilder.Entity("ParkingSystem.Models.Reservation", b =>
                 {
                     b.HasOne("ParkingSystem.Models.Car", "Car")
-                        .WithMany("ParkingSessions")
+                        .WithMany("Reservations")
                         .HasForeignKey("CarId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
@@ -337,7 +352,7 @@ namespace ParkingSystem.Migrations
 
             modelBuilder.Entity("ParkingSystem.Models.Car", b =>
                 {
-                    b.Navigation("ParkingSessions");
+                    b.Navigation("Reservations");
                 });
 
             modelBuilder.Entity("ParkingSystem.Models.ParkingSpot", b =>
@@ -347,6 +362,8 @@ namespace ParkingSystem.Migrations
 
             modelBuilder.Entity("ParkingSystem.Models.ParkingZone", b =>
                 {
+                    b.Navigation("Cars");
+
                     b.Navigation("ParkingSpots");
                 });
 

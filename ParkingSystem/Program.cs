@@ -12,11 +12,17 @@ using ParkingSystem.Constants;
 using ParkingSystem.Consumers;
 using ParkingSystem.Data;
 using ParkingSystem.DTOs;
+using ParkingSystem.Filters;
 using ParkingSystem.Handlers;
 using ParkingSystem.Helpers;
+using ParkingSystem.Publishers;
 using ParkingSystem.Services;
 using System.Configuration;
+using System.Security.Claims;
 using System.Text;
+using System.Text.Json.Serialization;
+using Serilog;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,6 +30,11 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 
 builder.Services.AddControllers();
+builder.Services.AddControllers().AddJsonOptions(options =>
+{
+    //options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.Preserve;
+    options.JsonSerializerOptions.WriteIndented = true;
+});
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -44,6 +55,8 @@ builder.Services.AddTransient<EmailService>();
 builder.Services.AddSingleton<RabbitMQPublisherService>();
 builder.Services.AddHostedService<ReservationCreatedConsumer>();
 builder.Services.AddHostedService<ReservationCancellationService>();
+builder.Services.AddHostedService<ReservationCancelledConsumer>();
+builder.Services.AddHostedService<ReservationCancellationWarningConsumer>();
 
 builder.Services.AddDbContext<AppDbContext>();
 var mappingConfig = new MapperConfiguration(mc =>
@@ -61,7 +74,11 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.LoginPath = "/Auth/login";
     options.AccessDeniedPath = "/Auth/login";
 });
-
+builder.Host.UseSerilog((context, config) =>
+{
+    config.WriteTo.Console()
+          .ReadFrom.Configuration(context.Configuration);
+});
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "Parking System API", Version = "v1" });
@@ -75,6 +92,8 @@ builder.Services.AddSwaggerGen(c =>
         Type = SecuritySchemeType.ApiKey,
         Scheme = "Bearer"
     });
+    c.OperationFilter<AuthorizeCheckOperationFilter>(); 
+
 
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
@@ -129,15 +148,14 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization(options =>
 {
-    options.AddPolicy("AdminOnly", policy =>
-        policy.RequireRole(Roles.Admin));
+    options.AddPolicy("Admin", policy =>
+        policy.RequireClaim(ClaimTypes.Role, "Admin"));
 
 
     options.AddPolicy("User", policy =>
-        policy.RequireRole(Roles.Admin, Roles.User));
+        policy.RequireClaim(ClaimTypes.Role, "User"));
 
-    options.AddPolicy("MobileOnly", policy =>
-        policy.RequireClaim("client_type", "mobile"));
+
 });
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));

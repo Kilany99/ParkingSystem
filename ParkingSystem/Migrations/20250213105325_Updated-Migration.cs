@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace ParkingSystem.Migrations
 {
     /// <inheritdoc />
-    public partial class NewMigration : Migration
+    public partial class UpdatedMigration : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -57,6 +57,8 @@ namespace ParkingSystem.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     UserId = table.Column<int>(type: "int", nullable: false),
                     PlateNumber = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    ParkingZoneId = table.Column<int>(type: "int", nullable: true),
+                    ReservationId = table.Column<int>(type: "int", nullable: false),
                     Model = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     Color = table.Column<string>(type: "nvarchar(30)", maxLength: 30, nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
@@ -64,6 +66,12 @@ namespace ParkingSystem.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Cars", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Cars_ParkingZones_ParkingZoneId",
+                        column: x => x.ParkingZoneId,
+                        principalTable: "ParkingZones",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_Cars_Users_UserId",
                         column: x => x.UserId,
@@ -162,6 +170,11 @@ namespace ParkingSystem.Migrations
                 });
 
             migrationBuilder.CreateIndex(
+                name: "IX_Cars_ParkingZoneId",
+                table: "Cars",
+                column: "ParkingZoneId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Cars_PlateNumber",
                 table: "Cars",
                 column: "PlateNumber",
@@ -221,16 +234,20 @@ namespace ParkingSystem.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropForeignKey(
+                name: "FK_Cars_ParkingZones_ParkingZoneId",
+                table: "Cars");
+
+            migrationBuilder.DropForeignKey(
+                name: "FK_ParkingSpots_ParkingZones_ParkingZoneId",
+                table: "ParkingSpots");
+
+            migrationBuilder.DropForeignKey(
                 name: "FK_Cars_Users_UserId",
                 table: "Cars");
 
             migrationBuilder.DropForeignKey(
                 name: "FK_Reservations_Users_UserId",
                 table: "Reservations");
-
-            migrationBuilder.DropForeignKey(
-                name: "FK_ParkingSpots_ParkingZones_ParkingZoneId",
-                table: "ParkingSpots");
 
             migrationBuilder.DropForeignKey(
                 name: "FK_ParkingSpots_Reservations_CurrentReservationId",
@@ -240,10 +257,10 @@ namespace ParkingSystem.Migrations
                 name: "Payments");
 
             migrationBuilder.DropTable(
-                name: "Users");
+                name: "ParkingZones");
 
             migrationBuilder.DropTable(
-                name: "ParkingZones");
+                name: "Users");
 
             migrationBuilder.DropTable(
                 name: "Reservations");

@@ -37,7 +37,6 @@ namespace ParkingSystem.Models
 
         public virtual User User { get; set; }
         public virtual Car Car { get; set; }
-        [JsonIgnore]
         public virtual ParkingSpot ParkingSpot { get; set; }
         public virtual Payment Payment { get; set; }
 

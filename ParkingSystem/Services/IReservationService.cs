@@ -1,10 +1,14 @@
 ﻿using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using ParkingSystem.Data;
 using ParkingSystem.DTOs;
+using ParkingSystem.DTOs.Events;
 using ParkingSystem.Enums;
+using ParkingSystem.Helpers;
 using ParkingSystem.Models;
+using ParkingSystem.Publishers;
 using System.Text.RegularExpressions;
 using static ParkingSystem.DTOs.PaymentDtos;
 using static ParkingSystem.DTOs.ReservationDtos;
@@ -19,12 +23,16 @@ namespace ParkingSystem.Services
         Task<ReservationDto> CancelReservationAsync(int reservationId, int userId);
 
         Task<IEnumerable<ReservationDto>> GetUserReservationsAsync(int userId);
+        Task<IEnumerable<ReservationDto>> GetAllReservationsAsync();
+        Task<IEnumerable<ReservationDto>> GetReservationsInParkingZoneAsync(int parkingZoneId);
+
         Task<decimal> CalculateParkingFeeAsync(int reservationId);
-        public Task<ReservationDto> GetActiveReservation(int carId);
+        Task<ReservationDto> GetActiveReservation(int carId);
         Task<decimal> CalculateCnxFeeAsync(int reservationId);
         Task<bool> HasActiveReservation(int carId);
         Task<decimal> GetTodayRevenueAsync();
         Task<object> GetTodayActivity();
+        byte[] GetQRImage(string qrCode);
     }
     public class ReservationService : IReservationService
     {
@@ -35,11 +43,12 @@ namespace ParkingSystem.Services
         private readonly ILogger<ReservationService> _logger;
         private readonly IPaymentService _paymentService;
         private readonly RabbitMQPublisherService _rabbitMQPublisherService;
+        private readonly QRGenerationHelper _qrGenerationHelper;
         private readonly Regex _plateRegex = new(@"^[A-Z]{3}\d{4}$", RegexOptions.Compiled);
 
         public ReservationService(AppDbContext context, IMapper mapper, IQRCodeService qrCodeService,
             IParkingZoneService parkingZoneService, ILogger<ReservationService> logger, IPaymentService paymentService,
-            RabbitMQPublisherService rabbitMQPublisherService)
+            RabbitMQPublisherService rabbitMQPublisherService, QRGenerationHelper qrGenerationHelper)
         {
             _context = context;
             _mapper = mapper;
@@ -48,6 +57,7 @@ namespace ParkingSystem.Services
             _logger = logger;
             _paymentService = paymentService;
             _rabbitMQPublisherService = rabbitMQPublisherService;
+            _qrGenerationHelper = qrGenerationHelper;
         }
 
         public async Task<ReservationDto> CreateReservationAsync(int userId, CreateReservationDto dto)
@@ -69,14 +79,15 @@ namespace ParkingSystem.Services
             var car = await _context.Cars
                 .FirstOrDefaultAsync(c => c.Id == dto.CarId && c.UserId == userId)??
                     throw new InvalidOperationException("Car not found or doesn't belong to user");
-
+            car.ParkingZoneId = dto.ParkingZoneId;
+            
             //verfy that parking zone not full
             var parkingZone = await _context.ParkingZones.FindAsync(dto.ParkingZoneId)?? 
                 throw new InvalidOperationException("Parking zone not found");
            if (parkingZone.IsFull)
                 throw new InvalidOperationException($"Parking zone {parkingZone.Name} is full");
 
-
+           
             // Verify spot is available
             var spot = await _context.ParkingSpots
                 .FirstOrDefaultAsync(s => s.Id == dto.ParkingSpotId);
@@ -99,7 +110,7 @@ namespace ParkingSystem.Services
             reservation.ParkingSpot = spot;
             reservation.ParkingSpot.ParkingZone = parkingZone;
             await _context.SaveChangesAsync();
-
+            car.ReservationId = reservation.Id;
             reservation.QRCode = _qrCodeService.GenerateQRCode(
                      reservation.Id,
                      userId,
@@ -260,7 +271,8 @@ namespace ParkingSystem.Services
             // Check if reservation can be cancelled
             if (reservation.Status != SessionStatus.Reserved)
                 throw new InvalidOperationException("Only reserved status reservations can be cancelled");
-
+            var user = _context.Users.FirstOrDefaultAsync(u => u.Id == userId).Result
+                          ?? throw new KeyNotFoundException("User not found!!");
             try
             {
                 // Calculate any applicable cancellation fee
@@ -278,6 +290,13 @@ namespace ParkingSystem.Services
                 }
 
                 await _context.SaveChangesAsync();
+                var reservationEvent = new ReservationCancelledEvent
+                {
+                    Email = user.Email,  // Retrieve user email
+                    CancelledAt = DateTime.UtcNow
+                };
+
+                _rabbitMQPublisherService.PublishReservationCanceledEvent(reservationEvent);
 
                 _logger.LogInformation(
                     "Reservation {ReservationId} cancelled. Cancellation fee: {Fee}",
@@ -329,6 +348,33 @@ namespace ParkingSystem.Services
             return _mapper.Map<IEnumerable<ReservationDto>>(reservations);
         }
 
+        public async Task<IEnumerable<ReservationDto>> GetAllReservationsAsync()
+        {
+            var reservations = await _context.Reservations
+                .Include (r => r.Car)
+                .Include (r => r.ParkingSpot)
+                    .ThenInclude(r => r.ParkingZone)
+                .OrderByDescending(r => r.EntryTime)
+                .ToListAsync();
+            return _mapper.Map<IEnumerable<ReservationDto>>(reservations);
+        }
+
+        public async Task<IEnumerable<ReservationDto>> GetReservationsInParkingZoneAsync(int parkingZoneId)
+        {
+            var parkingZone = await _context.ParkingZones.FindAsync(parkingZoneId) ??
+                throw new InvalidOperationException("parking zone id is not correct or parking zone not exist");
+            var reservations = await _context.Reservations
+              .Include(r => r.Car)
+              .Include(r => r.ParkingSpot)
+                  .ThenInclude(ps => ps.ParkingZone)
+              .Where(r => r.ParkingSpot.ParkingZoneId == parkingZone.Id)
+              .OrderByDescending(r => r.EntryTime)
+              .ToListAsync();
+
+            return _mapper.Map<IEnumerable<ReservationDto>>(reservations);
+
+        }
+
         public async Task<ReservationDto> GetActiveReservation(int carId)
         {
             var reservation = await _context.Reservations
@@ -354,6 +400,23 @@ namespace ParkingSystem.Services
             return await _context.Reservations
                 .Where(r => r.IsPaid && r.CreatedAt >= today)
                 .SumAsync(r => r.TotalAmount ?? 0);
+        }
+
+        public byte[] GetQRImage(string qrCode)
+        {
+            if (qrCode == null || qrCode.IsNullOrEmpty())
+                throw new ArgumentNullException("please use a valid qr code");
+
+            try
+            {
+                 byte[] qrImageBytes = _qrGenerationHelper.GenerateQRCodeImageBytes(qrCode);
+                 return qrImageBytes;
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+            
         }
         private async Task<ReservationDto> GetReservationDtoAsync(int reservationId) =>
          _mapper.Map<ReservationDto>(await _context.Reservations

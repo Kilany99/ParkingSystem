@@ -1,4 +1,4 @@
-﻿namespace ParkingSystem.DTOs
+﻿namespace ParkingSystem.DTOs.Events
 {
     public class EmailNotificationRequest
     {

@@ -1,31 +1,28 @@
 ﻿using RabbitMQ.Client;
-using RabbitMQ.Client.Events;  
+using RabbitMQ.Client.Events;
 using System;
 using System.Text;
 using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
+
 using ParkingSystem.Services;
 using ParkingSystem.DTOs.Events;
 
 namespace ParkingSystem.Consumers
 {
-    public class ReservationCreatedConsumer : BackgroundService
+    public class ReservationCancellationWarningConsumer : BackgroundService
     {
         private readonly IServiceScopeFactory _scopeFactory;
         private IConnection _connection;
         private IModel _channel;
 
-        public ReservationCreatedConsumer(IServiceScopeFactory scopeFactory)
+        public ReservationCancellationWarningConsumer(IServiceScopeFactory scopeFactory)
         {
             _scopeFactory = scopeFactory;
             var factory = new ConnectionFactory() { HostName = "localhost", UserName = "guest", Password = "guest" };
             _connection = factory.CreateConnection();
             _channel = _connection.CreateModel();
 
-            _channel.QueueDeclare(queue: "reservation_created_queue",
+            _channel.QueueDeclare(queue: "reservation_cancellation_warning_queue",
                                  durable: true,
                                  exclusive: false,
                                  autoDelete: false,
@@ -39,29 +36,26 @@ namespace ParkingSystem.Consumers
             {
                 var body = ea.Body.ToArray();
                 var message = Encoding.UTF8.GetString(body);
-                var reservationEvent = JsonSerializer.Deserialize<ReservationCreatedEvent>(message) ??
-                throw new Exception("An error occured");
+                var reservationEvent = JsonSerializer.Deserialize<ReservationCancellationWarningEvent>(message) ?? throw new Exception("An error occurred");
 
                 using (var scope = _scopeFactory.CreateScope())
                 {
                     var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
                     string emailBody = $@"
-                    <p>Thank you for using Easy Park!</p>
-                    <p>Your reservation will be kept on hold for 24 hours until {reservationEvent.CreatedAt.AddHours(24):f}.</p>
-                    <p>Please find attached QR code of your reservation.</p>";
+                    <p>Your reservation is scheduled to be cancelled in 1 hour it is valid until {reservationEvent.CancellationTime:f}</p>
+                    <p>Please make sure to confirm or modify your reservation if needed.</p>";
 
                     await emailService.SendNotificationEmailAsync(
                         reservationEvent.Email,
-                        "Your Easy Park Reservation",
-                        emailBody,
-                        reservationEvent.QRCode
+                        "Your Reservation Will Be Cancelled Soon",
+                        emailBody
                     );
                 }
 
                 _channel.BasicAck(deliveryTag: ea.DeliveryTag, multiple: false);
             };
 
-            _channel.BasicConsume(queue: "reservation_created_queue",
+            _channel.BasicConsume(queue: "reservation_cancellation_warning_queue",
                                  autoAck: false,
                                  consumer: consumer);
 
@@ -75,5 +69,4 @@ namespace ParkingSystem.Consumers
             base.Dispose();
         }
     }
-
 }

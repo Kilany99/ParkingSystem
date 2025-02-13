@@ -21,7 +21,7 @@ namespace ParkingSystem.Controllers
         }
 
         [HttpPost]
-      //  [Authorize(Roles = "AdminOnly")]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<ParkingZoneDto>> CreateZone(CreateParkingZoneDto dto)
         {
             try
@@ -38,7 +38,6 @@ namespace ParkingSystem.Controllers
                 return StatusCode(500, "An error occurred while creating the parking zone");
             }
         }
-
         [HttpGet]
         public async Task<ActionResult<IEnumerable<ParkingZoneDto>>> GetAllZones()
         {
@@ -64,6 +63,24 @@ namespace ParkingSystem.Controllers
         {
             var spots = await _parkingZoneService.GetAllSpotsAsync(id);
             return Ok(spots);
+        }
+
+
+        [HttpGet("get-all-cars-in-zone")]
+        [Authorize(Roles = "Admin")]
+        public async Task<ActionResult<ParkingZoneDto>> GetCarsInZone(int parkingZoneId)
+        {
+            try
+            {
+
+                var cars = await _parkingZoneService.GetCarsInZoneAsync(parkingZoneId);
+                return Ok(cars);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error getting cars in the parking zone:{parkingZoneId}");
+                return StatusCode(500, $"Error getting cars in the parking zone:{parkingZoneId}");
+            }
         }
 
 

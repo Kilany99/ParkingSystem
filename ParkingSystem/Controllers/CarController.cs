@@ -17,6 +17,7 @@ namespace ParkingSystem.Controllers
         {
             _carService = carService;
         }
+        [Authorize(Roles = "User")]
         [HttpPost]
         public async Task<ActionResult<CarDto>> AddCar(CreateCarDto dto)
         {
@@ -39,7 +40,7 @@ namespace ParkingSystem.Controllers
                 return BadRequest(ex.Message);
             }
         }
-
+        [Authorize(Roles = "User")]
         [HttpGet]
         public async Task<ActionResult<IEnumerable<CarDto>>> GetMyCars()
         {
@@ -47,7 +48,7 @@ namespace ParkingSystem.Controllers
             var cars = await _carService.GetUserCarsAsync(userId);
             return Ok(cars);
         }
-
+        [Authorize(Roles = "User")]
         [HttpPut("{id}")]
         public async Task<ActionResult<CarDto>> UpdateCar(int id, UpdateCarDto dto)
         {
@@ -55,7 +56,7 @@ namespace ParkingSystem.Controllers
             var result = await _carService.UpdateCarAsync(userId, id, dto);
             return Ok(result);
         }
-
+        [Authorize(Roles = "User")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteCar(int id)
         {

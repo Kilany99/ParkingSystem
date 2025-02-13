@@ -48,10 +48,38 @@ namespace ParkingSystem.Services
                 .FirstOrDefaultAsync(u => u.Id == id)??
                     throw new KeyNotFoundException($"User with ID {id} not found"));
 
-        public async Task<bool> DeleteUser(int id) =>
-            await _context.Users.FindAsync(id) is { } user
-            ? await Task.FromResult(_context.Users.Remove(user) != null && await _context.SaveChangesAsync() > 0)
-                : false;
+        public async Task<bool> DeleteUser(int id)
+        {
+            // Load the user along with related Cars and Reservations
+            var user = await _context.Users
+                .Include(u => u.Cars)
+                .Include(u => u.Reservations)
+                .FirstOrDefaultAsync(u => u.Id == id);
+
+            if (user == null)
+            {
+                return false;
+            }
+
+            // Delete all related Cars
+            if (user.Cars.Any())
+            {
+                _context.Cars.RemoveRange(user.Cars);
+            }
+
+            // Delete all related Reservations
+            if (user.Reservations.Any())
+            {
+                _context.Reservations.RemoveRange(user.Reservations);
+            }
+
+            // Finally, delete the user
+            _context.Users.Remove(user);
+
+            // Save changes and return true if at least one record was affected
+            return await _context.SaveChangesAsync() > 0;
+        }
+
         public async Task<UserDto> GetCurrentUser(int userId) =>
             _mapper.Map<UserDto>(await _context.Users
                 .AsNoTracking()
@@ -68,6 +96,7 @@ namespace ParkingSystem.Services
             // Update only allowed fields
             user.Name = dto.Name;
             user.Phone = dto.Phone;
+            user.Role = dto.Role;
 
             await _context.SaveChangesAsync();
             return _mapper.Map<UserDto>(user);

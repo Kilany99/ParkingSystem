@@ -1,5 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using ParkingSystem.DTOs;
+using ParkingSystem.DTOs.Events;
 using ParkingSystem.Services;
 
 namespace ParkingSystem.Controllers
