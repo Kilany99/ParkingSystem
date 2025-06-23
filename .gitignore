@@ -9,6 +9,7 @@
 *.user
 *.userosscache
 *.sln.docstates
+ParkingSystem/appsettings.json
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
